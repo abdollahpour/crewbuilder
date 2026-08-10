@@ -4,6 +4,8 @@ Build a team of AI agents in a web UI, then download a project you can run.
 
 No need to hand-write CrewAI configs. Click around, hit **Build**, unzip, run.
 
+![Crew Builder — Agents](Screenshot.png)
+
 ## Why this project
 
 Crew Builder produces a **multi-agent system with no external dependencies** — no databases, no embedding stores, no vector DBs, no shared infrastructure you have to stand up and operate.
