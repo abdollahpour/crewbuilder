@@ -18,7 +18,7 @@ You can use the downloaded project as a good boilerplate for your work.
 You need [Docker](https://docs.docker.com/get-docker/).
 
 ```bash
-git clone https://github.com/<your-org>/crewbuilder.git
+git clone https://github.com/abdollahpour/crewbuilder.git
 cd crewbuilder
 docker compose up --build
 ```
