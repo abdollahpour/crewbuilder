@@ -1,0 +1,14 @@
+[project]
+name = "skill"
+version = "0.1.0"
+description = "Skill registry service"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "crewai[tools]>=1.15.10",
+    "fastapi>=0.141.1",
+    "psycopg[binary]>=3.3.4",
+    "pydantic-settings>=2.13.0",
+    "sqlalchemy>=2.0.51",
+    "uvicorn>=0.52.0",
+]

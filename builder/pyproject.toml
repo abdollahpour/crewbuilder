@@ -1,0 +1,15 @@
+[project]
+name = "builder"
+version = "0.1.0"
+description = "Crew Builder service"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "faiss-cpu>=1.14.3",
+    "fastapi>=0.141.1",
+    "fastembed>=0.8.0",
+    "langchain-text-splitters>=1.1.2",
+    "numpy>=2.4.6",
+    "pydantic-settings>=2.13.0",
+    "uvicorn>=0.52.0",
+]

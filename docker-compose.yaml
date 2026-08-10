@@ -1,0 +1,133 @@
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: skills
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./postgres-init:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+  
+  skill:
+    build: ./skill
+    ports:
+      - "8002:8080"
+    environment:
+      DATABASE_CONNECTION_URL: postgres:5432/skill
+      AGENT_SERVICE_URL: http://agent:8080
+    depends_on:
+      postgres:
+        condition: service_healthy
+      agent:
+        condition: service_started
+
+  agent:
+    build: ./agent
+    ports:
+      - "8003:8080"
+    environment:
+      DATABASE_CONNECTION_URL: postgres:5432/agent
+      CREW_SERVICE_URL: http://crew:8080
+    depends_on:
+      postgres:
+        condition: service_healthy
+      crew:
+        condition: service_started
+
+  mcp:
+    build: ./mcp
+    ports:
+      - "8004:8080"
+    environment:
+      DATABASE_CONNECTION_URL: postgres:5432/mcp
+      AGENT_SERVICE_URL: http://agent:8080
+      SKILL_SERVICE_URL: http://skill:8080
+    depends_on:
+      postgres:
+        condition: service_healthy
+      agent:
+        condition: service_started
+      skill:
+        condition: service_started
+
+  knowledge:
+    build: ./knowledge
+    ports:
+      - "8005:8080"
+    environment:
+      DATABASE_CONNECTION_URL: postgres:5432/knowledge
+      AGENT_SERVICE_URL: http://agent:8080
+      SKILL_SERVICE_URL: http://skill:8080
+    depends_on:
+      postgres:
+        condition: service_healthy
+      agent:
+        condition: service_started
+      skill:
+        condition: service_started
+
+  crew:
+    build: ./crew
+    ports:
+      - "8006:8080"
+    environment:
+      DATABASE_CONNECTION_URL: postgres:5432/crew
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  builder:
+    build: ./builder
+    ports:
+      - "8007:8080"
+    environment:
+      CREW_SERVICE_URL: http://crew:8080
+      AGENT_SERVICE_URL: http://agent:8080
+      SKILL_SERVICE_URL: http://skill:8080
+      MCP_SERVICE_URL: http://mcp:8080
+      KNOWLEDGE_SERVICE_URL: http://knowledge:8080
+    depends_on:
+      crew:
+        condition: service_started
+      agent:
+        condition: service_started
+      skill:
+        condition: service_started
+      mcp:
+        condition: service_started
+      knowledge:
+        condition: service_started
+  
+  dashboard:
+    build: ./dashboard
+
+  gateway:
+    build: ./gateway
+    ports:
+      - "8080:8080"
+    depends_on:
+      dashboard:
+        condition: service_started
+      skill:
+        condition: service_started
+      agent:
+        condition: service_started
+      mcp:
+        condition: service_started
+      knowledge:
+        condition: service_started
+      crew:
+        condition: service_started
+      builder:
+        condition: service_started
+
+volumes:
+  postgres_data:
