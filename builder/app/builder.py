@@ -5,7 +5,6 @@ import zipfile
 from pathlib import Path
 
 from app.agent_deps import resolve_agent_effective_deps
-from app.dockerignore import is_dockerignored, load_dockerignore_patterns
 from app.knowledge_builder import collect_knowledge_files
 from app.registry import fetch_agent, fetch_mcp
 from app.schemas import Crew
@@ -13,7 +12,6 @@ from app.skills_builder import collect_skill_files
 
 CREW_DIR = Path(__file__).resolve().parent.parent
 TEMPLATE_DIR = CREW_DIR / "template"
-DOCKERIGNORE_PATH = CREW_DIR / ".dockerignore"
 
 
 def _jsonc(value: object) -> str:
@@ -170,7 +168,6 @@ def _collect_template_files() -> dict[str, bytes]:
     if not TEMPLATE_DIR.is_dir():
         return {}
 
-    ignore_patterns = load_dockerignore_patterns(DOCKERIGNORE_PATH)
     files: dict[str, bytes] = {}
 
     for dirpath, dirnames, filenames in os.walk(TEMPLATE_DIR, followlinks=False):
@@ -179,17 +176,10 @@ def _collect_template_files() -> dict[str, bytes]:
             directory
             for directory in dirnames
             if not (current / directory).is_symlink()
-            and not is_dockerignored(
-                (current / directory).relative_to(CREW_DIR).as_posix(),
-                ignore_patterns,
-            )
         )
 
         for filename in sorted(filenames):
             path = current / filename
-            context_relative = path.relative_to(CREW_DIR).as_posix()
-            if is_dockerignored(context_relative, ignore_patterns):
-                continue
             if path.is_symlink() or not path.is_file():
                 continue
 
