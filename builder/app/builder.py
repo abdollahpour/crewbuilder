@@ -1,3 +1,4 @@
+import fnmatch
 import io
 import json
 import os
@@ -12,10 +13,69 @@ from app.skills_builder import collect_skill_files
 
 CREW_DIR = Path(__file__).resolve().parent.parent
 TEMPLATE_DIR = CREW_DIR / "template"
+CREW_TEMPLATE_PATH = TEMPLATE_DIR / "crew.jsonc"
+AGENT_TEMPLATE_PATH = TEMPLATE_DIR / "agents" / "agent.jsonc"
+RENDERED_TEMPLATE_FILES = frozenset({"crew.jsonc", "agents/agent.jsonc"})
 
 
-def _jsonc(value: object) -> str:
-    return json.dumps(value, indent=2) + "\n"
+def _json_string(value: str) -> str:
+    return json.dumps(value)[1:-1]
+
+
+def _jsonc_optional_list(key: str, values: list | None, *, example: str) -> str:
+    if values:
+        return f'"{key}": {json.dumps(values)},'
+    return f'// "{key}": {example},'
+
+
+def _render_jsonc_template(path: Path, replacements: dict[str, str]) -> str:
+    if not path.is_file():
+        raise FileNotFoundError(f"Template not found: {path}")
+
+    rendered = path.read_text(encoding="utf-8")
+    for token, value in replacements.items():
+        if token not in rendered:
+            raise ValueError(f"{path.name} template missing placeholder {token}")
+        rendered = rendered.replace(token, value)
+
+    return rendered if rendered.endswith("\n") else rendered + "\n"
+
+
+def _render_crew_jsonc(crew: Crew, agent_names: list[str], crew_rules: str) -> str:
+    return _render_jsonc_template(
+        CREW_TEMPLATE_PATH,
+        {
+            "{{CREW_NAME}}": _json_string(f"{crew.name} Crew"),
+            "{{AGENTS}}": json.dumps(agent_names),
+            "{{CREW_RULES}}": _json_string(crew_rules),
+        },
+    )
+
+
+def _render_agent_jsonc(
+    *,
+    role: str,
+    goal: str,
+    backstory: str,
+    llm: str,
+    tools: list[str],
+    mcps: list[str | dict] | None = None,
+    skills: list[str] | None = None,
+) -> str:
+    return _render_jsonc_template(
+        AGENT_TEMPLATE_PATH,
+        {
+            "{{ROLE}}": _json_string(role),
+            "{{GOAL}}": _json_string(goal),
+            "{{BACKSTORY}}": _json_string(backstory),
+            "{{LLM}}": _json_string(llm),
+            "{{TOOLS}}": json.dumps(tools),
+            "{{MCPS}}": _jsonc_optional_list("mcps", mcps, example="[]"),
+            "{{SKILLS}}": _jsonc_optional_list(
+                "skills", skills, example='["./skills/my-skill"]'
+            ),
+        },
+    )
 
 
 def _inline_mcp_config(config: dict) -> str | dict:
@@ -75,33 +135,27 @@ def build_crewai_config(crew: Crew) -> dict[str, str]:
         if knowledge:
             tools.append("tools.knowledge_search:KnowledgeSearchTool")
 
-        agent_config = {
-            "role": agent_name,
-            "goal": agent.description.strip(),
-            "backstory": agent.rules.strip(),
-            "llm": agent.model or crew.model,
-            "tools": tools,
-            "settings": {
-                "verbose": True,
-                "max_execution_time": 300,
-            },
-        }
+        files[f"agents/{agent_name}.jsonc"] = _render_agent_jsonc(
+            role=agent_name,
+            goal=agent.description.strip(),
+            backstory=agent.rules.strip(),
+            llm=agent.model or crew.model,
+            tools=tools,
+            mcps=_resolve_agent_mcps(mcp_names) if mcp_names else None,
+            skills=[f"./skills/{name}" for name in agent.skills]
+            if agent.skills
+            else None,
+        )
 
-        if mcp_names:
-            agent_config["mcps"] = _resolve_agent_mcps(mcp_names)
+    files["crew.jsonc"] = _render_crew_jsonc(crew, agent_names, crew_rules)
 
-        if agent.skills:
-            agent_config["skills"] = ["skills"]
-
-        files[f"{agent_name}.jsonc"] = _jsonc(agent_config)
-
-    coordinator_config = {
-        "role": f"{crew.name} Coordinator",
-        "goal": (
+    files["agents/coordinator.jsonc"] = _render_agent_jsonc(
+        role=f"{crew.name} Coordinator",
+        goal=(
             "Understand the user request, delegate work to the best-suited team "
             "members, and deliver a complete result."
         ),
-        "backstory": "\n".join(
+        backstory="\n".join(
             [
                 (
                     f"You coordinate the {crew.name} team. Break requests into "
@@ -116,66 +170,59 @@ def build_crewai_config(crew: Crew) -> dict[str, str]:
                 *agent_roster,
             ]
         ).strip(),
-        "tools": [],
-        "llm": crew.model,
-        "settings": {
-            "verbose": True,
-            "max_execution_time": 6000,
-        },
-    }
-    files["coordinator.jsonc"] = _jsonc(coordinator_config)
-
-    task_description = "\n".join(
-        [
-            "Fulfill the following user request: {topic}",
-            "",
-            "## Crew rules",
-            crew_rules,
-            "",
-            "Follow the crew rules above for every decision and delegated subtask. "
-            "Delegate subtasks to team members based on their roles and skills. "
-            "Review their outputs and ensure the final deliverable addresses "
-            "the full request.",
-        ]
-    ).strip()
-
-    crew_config = {
-        "name": f"{crew.name} Crew",
-        "agents": agent_names,
-        "tasks": [
-            {
-                "name": "fulfill_request",
-                "description": task_description,
-                "expected_output": (
-                    "A complete markdown deliverable that addresses the user request. "
-                    "No fenced code blocks around the whole document."
-                ),
-                "output_file": "output/report.md",
-                "markdown": True,
-            }
-        ],
-        "process": "hierarchical",
-        "manager_agent": "coordinator",
-        "verbose": True,
-    }
-
-    files["crew.jsonc"] = _jsonc(crew_config)
+        llm=crew.model,
+        tools=[],
+    )
 
     return files
+
+
+def _gitignore_patterns() -> tuple[str, ...]:
+    gitignore = TEMPLATE_DIR / ".gitignore"
+    if not gitignore.is_file():
+        return ()
+
+    patterns: list[str] = []
+    for raw_line in gitignore.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#"):
+            continue
+        patterns.append(line)
+    return tuple(patterns)
+
+
+def _is_gitignored(relative: Path, patterns: tuple[str, ...]) -> bool:
+    if not patterns:
+        return False
+
+    posix = relative.as_posix()
+    if posix in {".", ""}:
+        return False
+
+    names = {posix, relative.name, *relative.parts}
+    names.discard(".")
+    return any(
+        fnmatch.fnmatch(name, pattern)
+        for pattern in patterns
+        for name in names
+    )
 
 
 def _collect_template_files() -> dict[str, bytes]:
     if not TEMPLATE_DIR.is_dir():
         return {}
 
+    ignore_patterns = _gitignore_patterns()
     files: dict[str, bytes] = {}
 
     for dirpath, dirnames, filenames in os.walk(TEMPLATE_DIR, followlinks=False):
         current = Path(dirpath)
+        relative_dir = current.relative_to(TEMPLATE_DIR)
         dirnames[:] = sorted(
             directory
             for directory in dirnames
             if not (current / directory).is_symlink()
+            and not _is_gitignored(relative_dir / directory, ignore_patterns)
         )
 
         for filename in sorted(filenames):
@@ -183,7 +230,13 @@ def _collect_template_files() -> dict[str, bytes]:
             if path.is_symlink() or not path.is_file():
                 continue
 
-            arcname = path.relative_to(TEMPLATE_DIR).as_posix()
+            arcname_path = path.relative_to(TEMPLATE_DIR)
+            if _is_gitignored(arcname_path, ignore_patterns):
+                continue
+
+            arcname = arcname_path.as_posix()
+            if arcname in RENDERED_TEMPLATE_FILES:
+                continue
             files[arcname] = path.read_bytes()
 
     return files

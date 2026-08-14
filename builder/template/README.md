@@ -36,7 +36,8 @@ The coordinator receives your input, assigns subtasks to team members, and write
 
 Generated layout:
 
-- `<agent_name>.jsonc` — agent configs (plus `coordinator.jsonc` and `crew.jsonc`)
+- `crew.jsonc` — crew definition (agents, tasks, manager)
+- `agents/<name>.jsonc` — agent configs (plus `agents/coordinator.jsonc`)
 - `knowledge/<name>/` — shared FAISS indexes; agents that use them get a `knowledge_search` tool
 - `skills/<name>/SKILL.md` — shared skills referenced from agent configs
 
