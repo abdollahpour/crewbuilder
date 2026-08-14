@@ -15,7 +15,10 @@ CREW_DIR = Path(__file__).resolve().parent.parent
 TEMPLATE_DIR = CREW_DIR / "template"
 CREW_TEMPLATE_PATH = TEMPLATE_DIR / "crew.jsonc"
 AGENT_TEMPLATE_PATH = TEMPLATE_DIR / "agents" / "agent.jsonc"
-RENDERED_TEMPLATE_FILES = frozenset({"crew.jsonc", "agents/agent.jsonc"})
+COORDINATOR_TEMPLATE_PATH = TEMPLATE_DIR / "agents" / "coordinator.jsonc"
+RENDERED_TEMPLATE_FILES = frozenset(
+    {"crew.jsonc", "agents/agent.jsonc", "agents/coordinator.jsonc"}
+)
 
 
 def _json_string(value: str) -> str:
@@ -74,6 +77,24 @@ def _render_agent_jsonc(
             "{{SKILLS}}": _jsonc_optional_list(
                 "skills", skills, example='["./skills/my-skill"]'
             ),
+        },
+    )
+
+
+def _render_coordinator_jsonc(
+    *,
+    role: str,
+    goal: str,
+    backstory: str,
+    llm: str,
+) -> str:
+    return _render_jsonc_template(
+        COORDINATOR_TEMPLATE_PATH,
+        {
+            "{{ROLE}}": _json_string(role),
+            "{{GOAL}}": _json_string(goal),
+            "{{BACKSTORY}}": _json_string(backstory),
+            "{{LLM}}": _json_string(llm),
         },
     )
 
@@ -149,7 +170,7 @@ def build_crewai_config(crew: Crew) -> dict[str, str]:
 
     files["crew.jsonc"] = _render_crew_jsonc(crew, agent_names, crew_rules)
 
-    files["agents/coordinator.jsonc"] = _render_agent_jsonc(
+    files["agents/coordinator.jsonc"] = _render_coordinator_jsonc(
         role=f"{crew.name} Coordinator",
         goal=(
             "Understand the user request, delegate work to the best-suited team "
@@ -171,7 +192,6 @@ def build_crewai_config(crew: Crew) -> dict[str, str]:
             ]
         ).strip(),
         llm=crew.model,
-        tools=[],
     )
 
     return files
