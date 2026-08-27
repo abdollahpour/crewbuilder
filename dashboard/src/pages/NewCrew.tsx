@@ -5,18 +5,28 @@ import { useNavigate } from 'react-router-dom'
 import CrewAgentSelector from '../components/CrewAgentSelector'
 import { CrewFormSkeleton } from '../components/CrewSkeletons'
 import { useCrews } from '../context/CrewContext'
-import { validateCrewModel, validateCrewNameUnique, validateCrewRules } from '../types/crew'
+import {
+  validateCrewBackstory,
+  validateCrewGoal,
+  validateCrewModel,
+  validateCrewNameUnique,
+  validateCrewRole,
+} from '../types/crew'
 
 export default function NewCrew() {
   const navigate = useNavigate()
   const { addCrew, isAdding, crews } = useCrews()
   const [name, setName] = useState('')
   const [model, setModel] = useState('')
-  const [rules, setRules] = useState('')
+  const [role, setRole] = useState('')
+  const [goal, setGoal] = useState('')
+  const [backstory, setBackstory] = useState('')
   const [selectedAgents, setSelectedAgents] = useState<string[]>([])
   const [nameError, setNameError] = useState('')
   const [modelError, setModelError] = useState('')
-  const [rulesError, setRulesError] = useState('')
+  const [roleError, setRoleError] = useState('')
+  const [goalError, setGoalError] = useState('')
+  const [backstoryError, setBackstoryError] = useState('')
 
   function handleNameChange(value: string) {
     setName(value)
@@ -28,9 +38,19 @@ export default function NewCrew() {
     setModelError(validateCrewModel(value) ?? '')
   }
 
-  function handleRulesChange(value: string) {
-    setRules(value)
-    setRulesError(validateCrewRules(value) ?? '')
+  function handleRoleChange(value: string) {
+    setRole(value)
+    setRoleError(validateCrewRole(value) ?? '')
+  }
+
+  function handleGoalChange(value: string) {
+    setGoal(value)
+    setGoalError(validateCrewGoal(value) ?? '')
+  }
+
+  function handleBackstoryChange(value: string) {
+    setBackstory(value)
+    setBackstoryError(validateCrewBackstory(value) ?? '')
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -38,18 +58,26 @@ export default function NewCrew() {
 
     const nextNameError = validateCrewNameUnique(name, crews) ?? ''
     const nextModelError = validateCrewModel(model) ?? ''
-    const nextRulesError = validateCrewRules(rules) ?? ''
+    const nextRoleError = validateCrewRole(role) ?? ''
+    const nextGoalError = validateCrewGoal(goal) ?? ''
+    const nextBackstoryError = validateCrewBackstory(backstory) ?? ''
 
     setNameError(nextNameError)
     setModelError(nextModelError)
-    setRulesError(nextRulesError)
+    setRoleError(nextRoleError)
+    setGoalError(nextGoalError)
+    setBackstoryError(nextBackstoryError)
 
-    if (nextNameError || nextModelError || nextRulesError) return
+    if (nextNameError || nextModelError || nextRoleError || nextGoalError || nextBackstoryError) {
+      return
+    }
 
     await addCrew({
       name: name.trim(),
       model: model.trim(),
-      rules: rules.trim(),
+      role: role.trim(),
+      goal: goal.trim(),
+      backstory: backstory.trim(),
       agents: selectedAgents,
     })
     navigate('/crews')
@@ -59,7 +87,9 @@ export default function NewCrew() {
     isAdding ||
     Boolean(validateCrewNameUnique(name, crews)) ||
     Boolean(validateCrewModel(model)) ||
-    Boolean(validateCrewRules(rules))
+    Boolean(validateCrewRole(role)) ||
+    Boolean(validateCrewGoal(goal)) ||
+    Boolean(validateCrewBackstory(backstory))
 
   return (
     <Box component="form" onSubmit={handleSubmit} noValidate>
@@ -99,13 +129,39 @@ export default function NewCrew() {
             required
           />
           <TextField
-            label="Rules"
-            value={rules}
-            onChange={(event) => handleRulesChange(event.target.value)}
-            error={Boolean(rulesError)}
+            label="Role"
+            value={role}
+            onChange={(event) => handleRoleChange(event.target.value)}
+            error={Boolean(roleError)}
             helperText={
-              rulesError ||
-              `${rules.length.toLocaleString()} characters · Instructions and constraints for this crew`
+              roleError ||
+              `${role.length.toLocaleString()} characters · Crew role title that appears in prompts and logs`
+            }
+            fullWidth
+            required
+          />
+          <TextField
+            label="Goal"
+            value={goal}
+            onChange={(event) => handleGoalChange(event.target.value)}
+            error={Boolean(goalError)}
+            helperText={
+              goalError ||
+              `${goal.length.toLocaleString()} characters · The crew's primary objective`
+            }
+            fullWidth
+            required
+            multiline
+            minRows={4}
+          />
+          <TextField
+            label="Backstory"
+            value={backstory}
+            onChange={(event) => handleBackstoryChange(event.target.value)}
+            error={Boolean(backstoryError)}
+            helperText={
+              backstoryError ||
+              `${backstory.length.toLocaleString()} characters · Background that shapes this crew's personality and approach`
             }
             fullWidth
             required

@@ -64,8 +64,8 @@
     //   //{"python": "sources.simple_knowledge.simple_knowledge_source"}
     // ],
     // "knowledge_config": {},
-    // "inject_date": true,
-    // "date_format": "%Y-%m-%d",
+    "inject_date": true,
+    "date_format": "%Y-%m-%d",
     // "security_config": {},
 
     // Agent behavior settings
@@ -77,7 +77,7 @@
       "allow_delegation": true,
 
       // Maximum reasoning iterations per task (prevents infinite loops)
-      // "max_iter": 25,
+      "max_iter": 5,
 
       // Maximum tokens for agent's response generation
       // "max_tokens": null,

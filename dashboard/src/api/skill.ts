@@ -1,4 +1,11 @@
 import {
+  Configuration,
+  DefaultApi,
+  ResponseError,
+  type SkillInput,
+  type SkillResponse,
+} from '../generated/api/skill'
+import {
   skillFromResponse,
   type NewSkillInput,
   type Skill,
@@ -6,124 +13,107 @@ import {
   type UpdateSkillInput,
 } from '../types/skill'
 
-const SKILL_API_BASE = '/api/v1/skills'
+const skillApi = new DefaultApi(new Configuration({ basePath: '' }))
 
-type SkillsResponse = {
-  skills: Array<{
-    name: string
-    description: string
-    skill_md: string
-    tools_required?: string[]
-    mcps?: string[]
-    knowledge?: string[]
-    updated_at?: string
-  }>
+async function readErrorMessage(response: Response): Promise<string> {
+  let message = `Request failed (${response.status})`
+
+  try {
+    const body = (await response.json()) as { detail?: unknown }
+    if (typeof body.detail === 'string' && body.detail) {
+      message = body.detail
+    }
+  } catch {
+    // ignore non-JSON error bodies
+  }
+
+  return message
 }
 
-async function apiRequest<T>(url: string, options?: RequestInit): Promise<T> {
-  const response = await fetch(url, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...options?.headers,
-    },
-  })
-
-  if (!response.ok) {
-    let message = `Request failed (${response.status})`
-
-    try {
-      const body = (await response.json()) as { detail?: string }
-      if (body.detail) {
-        message = body.detail
-      }
-    } catch {
-      // ignore non-JSON error bodies
+async function apiCall<T>(operation: () => Promise<T>): Promise<T> {
+  try {
+    return await operation()
+  } catch (error) {
+    if (error instanceof ResponseError) {
+      throw new Error(await readErrorMessage(error.response))
     }
 
-    throw new Error(message)
+    throw error
   }
-
-  if (response.status === 204) {
-    return undefined as T
-  }
-
-  return response.json() as Promise<T>
 }
 
-function skillPath(name: string) {
-  return `${SKILL_API_BASE}/${encodeURIComponent(name)}`
-}
-
-function skillBody(
-  input: Pick<
-    NewSkillInput,
-    'description' | 'skillMd' | 'toolsRequired' | 'mcps' | 'knowledge'
-  >,
-) {
+function toSkillInput(
+  input: Pick<NewSkillInput, 'description' | 'skillMd' | 'toolsRequired' | 'knowledge'>,
+): SkillInput {
   return {
     description: input.description.trim(),
-    skill_md: input.skillMd.trim(),
-    tools_required: input.toolsRequired,
-    mcps: input.mcps,
+    skillMd: input.skillMd.trim(),
+    toolsRequired: input.toolsRequired,
     knowledge: input.knowledge,
   }
 }
 
-export async function fetchSkills(): Promise<Skill[]> {
-  const data = await apiRequest<SkillsResponse>(SKILL_API_BASE)
-  return data.skills.map(skillFromResponse)
+function toSkill(data: SkillResponse): Skill {
+  return skillFromResponse({
+    name: data.name,
+    description: data.description,
+    skill_md: data.skillMd,
+    tools_required: data.toolsRequired,
+    knowledge: data.knowledge,
+    updated_at: data.updatedAt?.toISOString(),
+  })
 }
 
-type SkillToolsResponse = {
-  tools: string[]
+export async function fetchSkills(): Promise<Skill[]> {
+  const data = await apiCall(() => skillApi.listSkills())
+  return data.skills.map(toSkill)
 }
 
 export async function fetchSkillTools(): Promise<string[]> {
-  const data = await apiRequest<SkillToolsResponse>(`${SKILL_API_BASE}/tools`)
+  const data = await apiCall(() => skillApi.listTools())
   return data.tools
 }
 
 export async function createSkill(input: NewSkillInput): Promise<Skill> {
   const name = input.name.trim()
+  const skillInput = toSkillInput(input)
 
-  await apiRequest<{ name: string }>(skillPath(name), {
-    method: 'POST',
-    body: JSON.stringify(skillBody(input)),
-  })
+  await apiCall(() => skillApi.createSkill({ name, skillInput }))
 
   return skillFromResponse({
     name,
-    description: input.description.trim(),
-    skill_md: input.skillMd.trim(),
-    tools_required: input.toolsRequired,
+    description: skillInput.description,
+    skill_md: skillInput.skillMd,
+    tools_required: skillInput.toolsRequired,
     mcps: input.mcps,
-    knowledge: input.knowledge,
+    knowledge: skillInput.knowledge,
   })
 }
 
 export async function updateSkill(id: string, input: UpdateSkillInput): Promise<Skill> {
-  const body = skillBody(input)
+  const skillInput = toSkillInput(input)
 
-  await apiRequest<{ name: string }>(skillPath(id), {
-    method: 'PUT',
-    body: JSON.stringify(body),
-  })
+  await apiCall(() =>
+    skillApi.updateSkill({
+      name: id,
+      skillInput,
+    }),
+  )
 
   return skillFromResponse({
     name: id,
-    description: body.description,
-    skill_md: body.skill_md,
-    tools_required: body.tools_required,
-    mcps: body.mcps,
-    knowledge: body.knowledge,
+    description: skillInput.description,
+    skill_md: skillInput.skillMd,
+    tools_required: skillInput.toolsRequired,
+    mcps: input.mcps,
+    knowledge: skillInput.knowledge,
   })
 }
 
 export async function fetchSkillUsage(name: string): Promise<SkillUsage> {
-  return apiRequest<SkillUsage>(`${skillPath(name)}/usage`)
+  return apiCall(() => skillApi.getSkillUsage({ name }))
 }
 
 export async function deleteSkill(id: string): Promise<void> {
-  await apiRequest<void>(skillPath(id), { method: 'DELETE' })
+  await apiCall(() => skillApi.deleteSkill({ name: id }))
 }

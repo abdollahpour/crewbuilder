@@ -85,7 +85,7 @@ export default function Crew() {
         <ResourceListEmpty
           icon={<GroupsIcon sx={{ fontSize: 48 }} />}
           title="No crews"
-          description="You have not configured any crews yet. Add one with a model, rules, and a team of agents."
+          description="You have not configured any crews yet. Add one with a role, goal, backstory, and a team of agents."
           action={
             <Button variant="contained" startIcon={<AddIcon />} onClick={() => navigate('/crews/new')}>
               Add Crew
@@ -98,8 +98,8 @@ export default function Crew() {
             <ResourceListItem
               key={crew.id}
               title={crew.name}
-              meta={crew.model}
-              description={truncateText(crew.rules, 120)}
+              meta={`${crew.model} · ${crew.role}`}
+              description={truncateText(crew.goal, 120)}
               showDivider={index < crews.length - 1}
               actions={
                 <>

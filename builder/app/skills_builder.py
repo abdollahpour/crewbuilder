@@ -55,8 +55,13 @@ def build_skill_md(skill: Skill) -> str:
     return "\n".join(lines)
 
 
+def skill_dir(name: str) -> str:
+    """Skill directory containing SKILL.md: skills/<name>/<name>/."""
+    return f"skills/{name}/{name}"
+
+
 def collect_skill_files(crew: Crew) -> dict[str, bytes]:
-    """Package each unique skill once under skills/<name>/SKILL.md."""
+    """Package each unique skill once under skills/<name>/<name>/SKILL.md."""
     names: list[str] = []
     seen: set[str] = set()
 
@@ -71,7 +76,7 @@ def collect_skill_files(crew: Crew) -> dict[str, bytes]:
     files: dict[str, bytes] = {}
     for skill_name in names:
         skill = fetch_skill(skill_name)
-        arcname = f"skills/{skill.name}/SKILL.md"
+        arcname = f"{skill_dir(skill.name)}/SKILL.md"
         files[arcname] = build_skill_md(skill).encode("utf-8")
 
     return files

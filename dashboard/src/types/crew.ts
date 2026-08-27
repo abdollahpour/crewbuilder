@@ -2,7 +2,9 @@ export type Crew = {
   id: string
   name: string
   model: string
-  rules: string
+  role: string
+  goal: string
+  backstory: string
   agents: string[]
   updated_at?: string
 }
@@ -10,7 +12,9 @@ export type Crew = {
 export type NewCrewInput = {
   name: string
   model: string
-  rules: string
+  role: string
+  goal: string
+  backstory: string
   agents: string[]
 }
 
@@ -40,9 +44,25 @@ export function validateCrewModel(model: string): string | null {
   return null
 }
 
-export function validateCrewRules(rules: string): string | null {
-  if (!rules.trim()) {
-    return 'Rules are required'
+export function validateCrewRole(role: string): string | null {
+  if (!role.trim()) {
+    return 'Role is required'
+  }
+
+  return null
+}
+
+export function validateCrewGoal(goal: string): string | null {
+  if (!goal.trim()) {
+    return 'Goal is required'
+  }
+
+  return null
+}
+
+export function validateCrewBackstory(backstory: string): string | null {
+  if (!backstory.trim()) {
+    return 'Backstory is required'
   }
 
   return null
@@ -72,7 +92,9 @@ export function validateCrewNameUnique(
 export function crewFromResponse(data: {
   name: string
   model: string
-  rules: string
+  role: string
+  goal: string
+  backstory: string
   agents?: string[]
   updated_at?: string
 }): Crew {
@@ -80,7 +102,9 @@ export function crewFromResponse(data: {
     id: data.name,
     name: data.name,
     model: data.model,
-    rules: data.rules,
+    role: data.role,
+    goal: data.goal,
+    backstory: data.backstory,
     agents: data.agents ?? [],
     updated_at: data.updated_at,
   }
@@ -93,4 +117,3 @@ export function truncateText(text: string, maxLength = 160): string {
 
   return `${text.slice(0, maxLength).trimEnd()}…`
 }
-

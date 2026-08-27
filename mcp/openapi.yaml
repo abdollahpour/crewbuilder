@@ -1,0 +1,440 @@
+openapi: 3.1.0
+info:
+  title: MCP
+  description: MCP registry service
+  version: 0.1.0
+
+servers:
+  - url: http://localhost:8004
+    description: Local MCP service
+
+paths:
+  /probe:
+    get:
+      operationId: probe
+      summary: Check service and database health
+      responses:
+        "200":
+          description: Service and database are reachable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProbeOk"
+              example:
+                service: ok
+                database: ok
+        "503":
+          description: Database is unreachable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProbeError"
+              example:
+                error: connection refused
+
+  /api/v1/mcps:
+    get:
+      operationId: listMcps
+      summary: List all MCP servers
+      responses:
+        "200":
+          description: MCP servers keyed by name
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/McpListResponse"
+
+  /api/v1/mcps/{name}:
+    parameters:
+      - $ref: "#/components/parameters/McpName"
+    get:
+      operationId: getMcp
+      summary: Get an MCP server by name
+      responses:
+        "200":
+          description: MCP server config found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/McpServerConfig"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+    post:
+      operationId: createMcp
+      summary: Create an MCP server
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/McpInput"
+      responses:
+        "201":
+          description: MCP server created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/McpNameResponse"
+        "409":
+          description: MCP server already exists
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorDetail"
+              example:
+                detail: Server already exists
+        "422":
+          $ref: "#/components/responses/ValidationError"
+    put:
+      operationId: updateMcp
+      summary: Replace an MCP server
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/McpInput"
+      responses:
+        "200":
+          description: MCP server updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/McpNameResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+    delete:
+      operationId: deleteMcp
+      summary: Delete an MCP server
+      responses:
+        "204":
+          description: MCP server deleted
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "409":
+          description: MCP server is still referenced by agents or skills
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorDetail"
+              example:
+                detail: "Cannot delete MCP server in use by agents: researcher; skills: weather-lookup"
+        "502":
+          $ref: "#/components/responses/RegistryUnavailable"
+
+  /api/v1/mcps/{name}/usage:
+    get:
+      operationId: getMcpUsage
+      summary: List agents and skills that use an MCP server
+      parameters:
+        - $ref: "#/components/parameters/McpName"
+      responses:
+        "200":
+          description: Agent and skill names that reference the MCP server
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/McpUsageResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "502":
+          $ref: "#/components/responses/RegistryUnavailable"
+
+  /api/v1/mcps/{name}/tools:
+    get:
+      operationId: listMcpTools
+      summary: List tools exposed by an MCP server
+      parameters:
+        - $ref: "#/components/parameters/McpName"
+      responses:
+        "200":
+          description: Tools advertised by the MCP server
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/McpToolListResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "502":
+          $ref: "#/components/responses/McpUnavailable"
+
+  /api/v1/mcps/{name}/tools/{tool_name}/call:
+    post:
+      operationId: callMcpTool
+      summary: Call a tool on an MCP server
+      parameters:
+        - $ref: "#/components/parameters/McpName"
+        - $ref: "#/components/parameters/ToolName"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CallToolInput"
+      responses:
+        "200":
+          description: Tool call result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CallToolResult"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "502":
+          $ref: "#/components/responses/McpUnavailable"
+
+components:
+  parameters:
+    McpName:
+      name: name
+      in: path
+      required: true
+      description: 2–50 letters, numbers, underscores, or hyphens
+      schema:
+        $ref: "#/components/schemas/McpName"
+    ToolName:
+      name: tool_name
+      in: path
+      required: true
+      schema:
+        type: string
+        minLength: 1
+
+  responses:
+    BadRequest:
+      description: Server config is missing a URL
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorDetail"
+          example:
+            detail: Server config missing url
+    NotFound:
+      description: MCP server not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorDetail"
+          example:
+            detail: Server not found
+    ValidationError:
+      description: Path or request body failed schema validation
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/HTTPValidationError"
+    RegistryUnavailable:
+      description: Agent or skill registry request failed
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorDetail"
+          examples:
+            unavailable:
+              value:
+                detail: "Registry unavailable: http://localhost:8003/api/v1/agents/usage/mcp/book-flight"
+            failed:
+              value:
+                detail: "Registry request failed: http://localhost:8003/api/v1/agents/usage/mcp/book-flight (500)"
+    McpUnavailable:
+      description: Remote MCP server request failed
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorDetail"
+          example:
+            detail: "Failed to connect to MCP server: connection refused"
+
+  schemas:
+    McpName:
+      type: string
+      minLength: 2
+      maxLength: 50
+      pattern: "^[a-zA-Z0-9_-]{2,50}$"
+      example: book-flight
+
+    McpInput:
+      type: object
+      additionalProperties: false
+      required:
+        - url
+      properties:
+        url:
+          type: string
+          minLength: 1
+        headers:
+          type: object
+          additionalProperties:
+            type: string
+      example:
+        url: https://book-flight-mcp.demo.abdollahpour.com/mcp
+        headers:
+          Authorization: Bearer token
+
+    McpServerConfig:
+      type: object
+      required:
+        - url
+      properties:
+        url:
+          type: string
+        headers:
+          type: object
+          additionalProperties:
+            type: string
+
+    McpListResponse:
+      type: object
+      required:
+        - mcpServers
+      properties:
+        mcpServers:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/McpServerConfig"
+          example:
+            book-flight:
+              url: https://book-flight-mcp.demo.abdollahpour.com/mcp
+
+    McpNameResponse:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          $ref: "#/components/schemas/McpName"
+
+    McpUsageResponse:
+      type: object
+      required:
+        - agents
+        - skills
+      properties:
+        agents:
+          type: array
+          items:
+            type: string
+          example:
+            - researcher
+        skills:
+          type: array
+          items:
+            type: string
+          example:
+            - weather-lookup
+
+    McpTool:
+      type: object
+      required:
+        - name
+        - input_schema
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        input_schema:
+          type: object
+          additionalProperties: true
+
+    McpToolListResponse:
+      type: object
+      required:
+        - tools
+      properties:
+        tools:
+          type: array
+          items:
+            $ref: "#/components/schemas/McpTool"
+
+    CallToolInput:
+      type: object
+      additionalProperties: false
+      properties:
+        arguments:
+          type: object
+          additionalProperties: true
+          default: {}
+
+    CallToolResult:
+      type: object
+      required:
+        - is_error
+        - content
+      properties:
+        is_error:
+          type: boolean
+        content:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        structured_content: {}
+
+    ProbeOk:
+      type: object
+      required:
+        - service
+        - database
+      properties:
+        service:
+          type: string
+          const: ok
+        database:
+          type: string
+          const: ok
+
+    ProbeError:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: string
+
+    ErrorDetail:
+      type: object
+      required:
+        - detail
+      properties:
+        detail:
+          type: string
+
+    ValidationError:
+      type: object
+      properties:
+        loc:
+          type: array
+          items:
+            anyOf:
+              - type: string
+              - type: integer
+        msg:
+          type: string
+        type:
+          type: string
+
+    HTTPValidationError:
+      type: object
+      properties:
+        detail:
+          type: array
+          items:
+            $ref: "#/components/schemas/ValidationError"

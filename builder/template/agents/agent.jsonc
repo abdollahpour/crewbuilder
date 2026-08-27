@@ -64,8 +64,8 @@
     //   //{"python": "sources.simple_knowledge.simple_knowledge_source"}
     // ],
     // "knowledge_config": {},
-    // "inject_date": true,
-    // "date_format": "%Y-%m-%d",
+    "inject_date": true,
+    "date_format": "%Y-%m-%d",
     // "security_config": {},
 
     // Agent behavior settings
@@ -101,7 +101,7 @@
       // "max_retry_limit": 2,
 
       // Enable step-by-step planning before task execution
-      "planning": true
+      "planning": false
 
       // Include system prompt in LLM calls
       // "use_system_prompt": true

@@ -39,5 +39,5 @@ Generated layout:
 - `crew.jsonc` — crew definition (agents, tasks, manager)
 - `agents/<name>.jsonc` — agent configs (plus `agents/coordinator.jsonc`)
 - `knowledge/<name>/` — shared FAISS indexes; agents that use them get a `knowledge_search` tool
-- `skills/<name>/SKILL.md` — shared skills referenced from agent configs
+- `skills/<name>/<name>/SKILL.md` — shared skills referenced from agent configs
 

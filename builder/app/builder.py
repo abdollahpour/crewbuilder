@@ -44,13 +44,12 @@ def _render_jsonc_template(path: Path, replacements: dict[str, str]) -> str:
     return rendered if rendered.endswith("\n") else rendered + "\n"
 
 
-def _render_crew_jsonc(crew: Crew, agent_names: list[str], crew_rules: str) -> str:
+def _render_crew_jsonc(crew: Crew, agent_names: list[str]) -> str:
     return _render_jsonc_template(
         CREW_TEMPLATE_PATH,
         {
             "{{CREW_NAME}}": _json_string(f"{crew.name} Crew"),
             "{{AGENTS}}": json.dumps(agent_names),
-            "{{CREW_RULES}}": _json_string(crew_rules),
         },
     )
 
@@ -141,7 +140,6 @@ def build_crewai_config(crew: Crew) -> dict[str, str]:
     if not crew.agents:
         raise ValueError("Crew must have at least one agent to build a crew")
 
-    crew_rules = crew.rules.strip()
     agent_names: list[str] = []
     agent_roster: list[str] = []
     files: dict[str, str] = {}
@@ -149,7 +147,9 @@ def build_crewai_config(crew: Crew) -> dict[str, str]:
     for agent_name in crew.agents:
         agent = fetch_agent(agent_name)
         agent_names.append(agent_name)
-        agent_roster.append(f"- **{agent_name}**: {agent.description.strip()}")
+        agent_roster.append(
+            f"- **{agent_name}** ({agent.role.strip()}): {agent.goal.strip()}"
+        )
 
         tool_names, mcp_names, knowledge = resolve_agent_effective_deps(agent)
         tools: list[str] = _resolve_agent_tools(tool_names)
@@ -157,9 +157,9 @@ def build_crewai_config(crew: Crew) -> dict[str, str]:
             tools.append("tools.knowledge_search:KnowledgeSearchTool")
 
         files[f"agents/{agent_name}.jsonc"] = _render_agent_jsonc(
-            role=agent_name,
-            goal=agent.description.strip(),
-            backstory=agent.rules.strip(),
+            role=agent.role.strip(),
+            goal=agent.goal.strip(),
+            backstory=agent.backstory.strip(),
             llm=agent.model or crew.model,
             tools=tools,
             mcps=_resolve_agent_mcps(mcp_names) if mcp_names else None,
@@ -168,24 +168,14 @@ def build_crewai_config(crew: Crew) -> dict[str, str]:
             else None,
         )
 
-    files["crew.jsonc"] = _render_crew_jsonc(crew, agent_names, crew_rules)
+    files["crew.jsonc"] = _render_crew_jsonc(crew, agent_names)
 
     files["agents/coordinator.jsonc"] = _render_coordinator_jsonc(
-        role=f"{crew.name} Coordinator",
-        goal=(
-            "Understand the user request, delegate work to the best-suited team "
-            "members, and deliver a complete result."
-        ),
+        role=crew.role.strip(),
+        goal=crew.goal.strip(),
         backstory="\n".join(
             [
-                (
-                    f"You coordinate the {crew.name} team. Break requests into "
-                    "subtasks and assign each part to the agent whose role and skills "
-                    "fit best."
-                ),
-                "",
-                "## Crew rules",
-                crew_rules,
+                crew.backstory.strip(),
                 "",
                 "## Team roster",
                 *agent_roster,

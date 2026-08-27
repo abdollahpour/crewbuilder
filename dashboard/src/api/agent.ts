@@ -1,4 +1,11 @@
 import {
+  Configuration,
+  DefaultApi,
+  ResponseError,
+  type AgentInput,
+  type AgentResponse,
+} from '../generated/api/agent'
+import {
   agentFromResponse,
   type Agent,
   type AgentUsage,
@@ -6,67 +13,46 @@ import {
   type UpdateAgentInput,
 } from '../types/agent'
 
-const AGENT_API_BASE = '/api/v1/agents'
+const agentApi = new DefaultApi(new Configuration({ basePath: '' }))
 
-type AgentsResponse = {
-  agents: Array<{
-    name: string
-    model: string
-    description: string
-    rules: string
-    tools?: string[]
-    mcps?: string[]
-    skills?: string[]
-    knowledge?: string[]
-    updated_at?: string
-  }>
+async function readErrorMessage(response: Response): Promise<string> {
+  let message = `Request failed (${response.status})`
+
+  try {
+    const body = (await response.json()) as { detail?: unknown }
+    if (typeof body.detail === 'string' && body.detail) {
+      message = body.detail
+    }
+  } catch {
+    // ignore non-JSON error bodies
+  }
+
+  return message
 }
 
-async function apiRequest<T>(url: string, options?: RequestInit): Promise<T> {
-  const response = await fetch(url, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...options?.headers,
-    },
-  })
-
-  if (!response.ok) {
-    let message = `Request failed (${response.status})`
-
-    try {
-      const body = (await response.json()) as { detail?: string }
-      if (body.detail) {
-        message = body.detail
-      }
-    } catch {
-      // ignore non-JSON error bodies
+async function apiCall<T>(operation: () => Promise<T>): Promise<T> {
+  try {
+    return await operation()
+  } catch (error) {
+    if (error instanceof ResponseError) {
+      throw new Error(await readErrorMessage(error.response))
     }
 
-    throw new Error(message)
+    throw error
   }
-
-  if (response.status === 204) {
-    return undefined as T
-  }
-
-  return response.json() as Promise<T>
 }
 
-function agentPath(name: string) {
-  return `${AGENT_API_BASE}/${encodeURIComponent(name)}`
-}
-
-function agentBody(
+function toAgentInput(
   input: Pick<
     NewAgentInput,
-    'model' | 'description' | 'rules' | 'tools' | 'mcps' | 'skills' | 'knowledge'
+    'model' | 'role' | 'goal' | 'backstory' | 'tools' | 'mcps' | 'skills' | 'knowledge'
   >,
-) {
+): AgentInput {
   return {
     model: input.model.trim(),
-    description: input.description.trim(),
-    rules: input.rules.trim(),
+    role: input.role.trim(),
+    goal: input.goal.trim(),
+    backstory: input.backstory.trim(),
     tools: input.tools,
     mcps: input.mcps,
     skills: input.skills,
@@ -74,55 +60,72 @@ function agentBody(
   }
 }
 
+function toAgent(data: AgentResponse): Agent {
+  return agentFromResponse({
+    name: data.name,
+    model: data.model,
+    role: data.role,
+    goal: data.goal,
+    backstory: data.backstory,
+    tools: data.tools,
+    mcps: data.mcps,
+    skills: data.skills,
+    knowledge: data.knowledge,
+    updated_at: data.updatedAt?.toISOString(),
+  })
+}
+
 export async function fetchAgents(): Promise<Agent[]> {
-  const data = await apiRequest<AgentsResponse>(AGENT_API_BASE)
-  return data.agents.map(agentFromResponse)
+  const data = await apiCall(() => agentApi.listAgents())
+  return data.agents.map(toAgent)
 }
 
 export async function createAgent(input: NewAgentInput): Promise<Agent> {
   const name = input.name.trim()
+  const agentInput = toAgentInput(input)
 
-  await apiRequest<{ name: string }>(agentPath(name), {
-    method: 'POST',
-    body: JSON.stringify(agentBody(input)),
-  })
+  await apiCall(() => agentApi.createAgent({ name, agentInput }))
 
   return agentFromResponse({
     name,
-    model: input.model.trim(),
-    description: input.description.trim(),
-    rules: input.rules.trim(),
-    tools: input.tools,
-    mcps: input.mcps,
-    skills: input.skills,
-    knowledge: input.knowledge,
+    model: agentInput.model,
+    role: agentInput.role,
+    goal: agentInput.goal,
+    backstory: agentInput.backstory,
+    tools: agentInput.tools,
+    mcps: agentInput.mcps,
+    skills: agentInput.skills,
+    knowledge: agentInput.knowledge,
   })
 }
 
 export async function updateAgent(id: string, input: UpdateAgentInput): Promise<Agent> {
-  const body = agentBody(input)
+  const agentInput = toAgentInput(input)
 
-  await apiRequest<{ name: string }>(agentPath(id), {
-    method: 'PUT',
-    body: JSON.stringify(body),
-  })
+  await apiCall(() =>
+    agentApi.updateAgent({
+      name: id,
+      agentInput,
+    }),
+  )
 
   return agentFromResponse({
     name: id,
-    model: body.model,
-    description: body.description,
-    rules: body.rules,
-    tools: body.tools,
-    mcps: body.mcps,
-    skills: body.skills,
-    knowledge: body.knowledge,
+    model: agentInput.model,
+    role: agentInput.role,
+    goal: agentInput.goal,
+    backstory: agentInput.backstory,
+    tools: agentInput.tools,
+    mcps: agentInput.mcps,
+    skills: agentInput.skills,
+    knowledge: agentInput.knowledge,
   })
 }
 
 export async function fetchAgentUsage(name: string): Promise<AgentUsage> {
-  return apiRequest<AgentUsage>(`${agentPath(name)}/usage`)
+  return apiCall(() => agentApi.getAgentUsage({ name }))
 }
 
 export async function deleteAgent(id: string): Promise<void> {
-  await apiRequest<void>(agentPath(id), { method: 'DELETE' })
+  await apiCall(() => agentApi.deleteAgent({ name: id }))
 }

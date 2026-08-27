@@ -12,10 +12,12 @@ import AgentExtraSelectors from '../components/AgentExtraSelectors'
 import AgentSkillSelector from '../components/AgentSkillSelector'
 import { AgentFormSkeleton } from '../components/AgentSkeletons'
 import { useAgents } from '../context/AgentContext'
+import { formValuesEqual, useUnsavedChangesGuard } from '../hooks/useUnsavedChangesGuard'
 import {
-  validateAgentDescription,
+  validateAgentBackstory,
+  validateAgentGoal,
   validateAgentModel,
-  validateAgentRules,
+  validateAgentRole,
 } from '../types/agent'
 
 export default function EditAgent() {
@@ -25,22 +27,25 @@ export default function EditAgent() {
   const agent = agents.find((item) => item.id === id)
 
   const [model, setModel] = useState('')
-  const [description, setDescription] = useState('')
-  const [rules, setRules] = useState('')
+  const [role, setRole] = useState('')
+  const [goal, setGoal] = useState('')
+  const [backstory, setBackstory] = useState('')
   const [selectedTools, setSelectedTools] = useState<string[]>([])
   const [selectedMcps, setSelectedMcps] = useState<string[]>([])
   const [selectedSkills, setSelectedSkills] = useState<string[]>([])
   const [selectedKnowledge, setSelectedKnowledge] = useState<string[]>([])
   const [modelError, setModelError] = useState('')
-  const [descriptionError, setDescriptionError] = useState('')
-  const [rulesError, setRulesError] = useState('')
+  const [roleError, setRoleError] = useState('')
+  const [goalError, setGoalError] = useState('')
+  const [backstoryError, setBackstoryError] = useState('')
 
   useEffect(() => {
     if (!agent) return
 
     setModel(agent.model)
-    setDescription(agent.description)
-    setRules(agent.rules)
+    setRole(agent.role)
+    setGoal(agent.goal)
+    setBackstory(agent.backstory)
     setSelectedTools(agent.tools)
     setSelectedMcps(agent.mcps)
     setSelectedSkills(agent.skills)
@@ -58,51 +63,97 @@ export default function EditAgent() {
     setModelError(validateAgentModel(value) ?? '')
   }
 
-  function handleDescriptionChange(value: string) {
-    setDescription(value)
-    setDescriptionError(validateAgentDescription(value) ?? '')
+  function handleRoleChange(value: string) {
+    setRole(value)
+    setRoleError(validateAgentRole(value) ?? '')
   }
 
-  function handleRulesChange(value: string) {
-    setRules(value)
-    setRulesError(validateAgentRules(value) ?? '')
+  function handleGoalChange(value: string) {
+    setGoal(value)
+    setGoalError(validateAgentGoal(value) ?? '')
   }
+
+  function handleBackstoryChange(value: string) {
+    setBackstory(value)
+    setBackstoryError(validateAgentBackstory(value) ?? '')
+  }
+
+  const isSubmitting = updatingId === id
+  const isDirty = agent
+    ? !formValuesEqual(
+        {
+          model,
+          role,
+          goal,
+          backstory,
+          tools: selectedTools,
+          mcps: selectedMcps,
+          skills: selectedSkills,
+          knowledge: selectedKnowledge,
+        },
+        {
+          model: agent.model,
+          role: agent.role,
+          goal: agent.goal,
+          backstory: agent.backstory,
+          tools: agent.tools,
+          mcps: agent.mcps,
+          skills: agent.skills,
+          knowledge: agent.knowledge,
+        },
+      )
+    : false
+  const { allowLeave, dialog } = useUnsavedChangesGuard(isDirty)
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (!id) return
 
     const nextModelError = validateAgentModel(model) ?? ''
-    const nextDescriptionError = validateAgentDescription(description) ?? ''
-    const nextRulesError = validateAgentRules(rules) ?? ''
+    const nextRoleError = validateAgentRole(role) ?? ''
+    const nextGoalError = validateAgentGoal(goal) ?? ''
+    const nextBackstoryError = validateAgentBackstory(backstory) ?? ''
 
     setModelError(nextModelError)
-    setDescriptionError(nextDescriptionError)
-    setRulesError(nextRulesError)
+    setRoleError(nextRoleError)
+    setGoalError(nextGoalError)
+    setBackstoryError(nextBackstoryError)
 
-    if (nextModelError || nextDescriptionError || nextRulesError) return
+    if (nextModelError || nextRoleError || nextGoalError || nextBackstoryError) return
 
     await updateAgent(id, {
       model: model.trim(),
-      description: description.trim(),
-      rules: rules.trim(),
+      role: role.trim(),
+      goal: goal.trim(),
+      backstory: backstory.trim(),
       tools: selectedTools,
       mcps: selectedMcps,
       skills: selectedSkills,
       knowledge: selectedKnowledge,
     })
+    allowLeave()
     navigate('/agents')
   }
 
-  const isSubmitting = updatingId === id
+  function handleCancel() {
+    allowLeave()
+    navigate('/agents')
+  }
+
   const isSubmitDisabled =
     isSubmitting ||
     Boolean(validateAgentModel(model)) ||
-    Boolean(validateAgentDescription(description)) ||
-    Boolean(validateAgentRules(rules))
+    Boolean(validateAgentRole(role)) ||
+    Boolean(validateAgentGoal(goal)) ||
+    Boolean(validateAgentBackstory(backstory))
 
   if (isLoading || !agent) {
-    return <AgentFormSkeleton />
+    return (
+      <>
+        <AgentFormSkeleton />
+        {dialog}
+      </>
+    )
   }
 
   return (
@@ -141,13 +192,25 @@ export default function EditAgent() {
             required
           />
           <TextField
-            label="Description"
-            value={description}
-            onChange={(event) => handleDescriptionChange(event.target.value)}
-            error={Boolean(descriptionError)}
+            label="Role"
+            value={role}
+            onChange={(event) => handleRoleChange(event.target.value)}
+            error={Boolean(roleError)}
             helperText={
-              descriptionError ||
-              `${description.length.toLocaleString()} characters · Short summary of what this agent does`
+              roleError ||
+              `${role.length.toLocaleString()} characters · Agent role title that appears in prompts and logs`
+            }
+            fullWidth
+            required
+          />
+          <TextField
+            label="Goal"
+            value={goal}
+            onChange={(event) => handleGoalChange(event.target.value)}
+            error={Boolean(goalError)}
+            helperText={
+              goalError ||
+              `${goal.length.toLocaleString()} characters · The agent's primary objective`
             }
             fullWidth
             required
@@ -155,13 +218,13 @@ export default function EditAgent() {
             minRows={4}
           />
           <TextField
-            label="Rules"
-            value={rules}
-            onChange={(event) => handleRulesChange(event.target.value)}
-            error={Boolean(rulesError)}
+            label="Backstory"
+            value={backstory}
+            onChange={(event) => handleBackstoryChange(event.target.value)}
+            error={Boolean(backstoryError)}
             helperText={
-              rulesError ||
-              `${rules.length.toLocaleString()} characters · Instructions and constraints for this agent`
+              backstoryError ||
+              `${backstory.length.toLocaleString()} characters · Background that shapes this agent's personality and approach`
             }
             fullWidth
             required
@@ -191,12 +254,13 @@ export default function EditAgent() {
             <Button type="submit" variant="contained" disabled={isSubmitDisabled}>
               Save Agent
             </Button>
-            <Button variant="outlined" onClick={() => navigate('/agents')}>
+            <Button variant="outlined" onClick={handleCancel}>
               Cancel
             </Button>
           </Box>
         </Stack>
       )}
+      {dialog}
     </Box>
   )
 }

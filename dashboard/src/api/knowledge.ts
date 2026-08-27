@@ -1,4 +1,11 @@
 import {
+  Configuration,
+  DefaultApi,
+  ResponseError,
+  type KnowledgeInput,
+  type KnowledgeResponse,
+} from '../generated/api/knowledge'
+import {
   knowledgeFromResponse,
   type Knowledge,
   type KnowledgeUsage,
@@ -6,75 +13,63 @@ import {
   type UpdateKnowledgeInput,
 } from '../types/knowledge'
 
-const KNOWLEDGE_API_BASE = '/api/v1/knowledge'
+const knowledgeApi = new DefaultApi(new Configuration({ basePath: '' }))
 
-type KnowledgeResponse = {
-  knowledge: Array<{
-    name: string
-    content: string
-    updated_at?: string
-  }>
+async function readErrorMessage(response: Response): Promise<string> {
+  let message = `Request failed (${response.status})`
+
+  try {
+    const body = (await response.json()) as { detail?: unknown }
+    if (typeof body.detail === 'string' && body.detail) {
+      message = body.detail
+    }
+  } catch {
+    // ignore non-JSON error bodies
+  }
+
+  return message
 }
 
-async function apiRequest<T>(url: string, options?: RequestInit): Promise<T> {
-  const response = await fetch(url, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...options?.headers,
-    },
-  })
-
-  if (!response.ok) {
-    let message = `Request failed (${response.status})`
-
-    try {
-      const body = (await response.json()) as { detail?: string }
-      if (body.detail) {
-        message = body.detail
-      }
-    } catch {
-      // ignore non-JSON error bodies
+async function apiCall<T>(operation: () => Promise<T>): Promise<T> {
+  try {
+    return await operation()
+  } catch (error) {
+    if (error instanceof ResponseError) {
+      throw new Error(await readErrorMessage(error.response))
     }
 
-    throw new Error(message)
+    throw error
   }
-
-  if (response.status === 204) {
-    return undefined as T
-  }
-
-  return response.json() as Promise<T>
 }
 
-function knowledgePath(name: string) {
-  return `${KNOWLEDGE_API_BASE}/${encodeURIComponent(name)}`
-}
-
-function knowledgeBody(input: Pick<NewKnowledgeInput, 'content'>) {
+function toKnowledgeInput(input: Pick<NewKnowledgeInput, 'content'>): KnowledgeInput {
   return {
     content: input.content,
   }
 }
 
-export async function fetchKnowledge(): Promise<Knowledge[]> {
-  const data = await apiRequest<KnowledgeResponse>(KNOWLEDGE_API_BASE)
-  return data.knowledge.map(knowledgeFromResponse)
+function toKnowledge(data: KnowledgeResponse): Knowledge {
+  return knowledgeFromResponse({
+    name: data.name,
+    content: data.content,
+    updated_at: data.updatedAt?.toISOString(),
+  })
 }
 
-export async function createKnowledge(
-  input: NewKnowledgeInput,
-): Promise<Knowledge> {
-  const name = input.name.trim()
+export async function fetchKnowledge(): Promise<Knowledge[]> {
+  const data = await apiCall(() => knowledgeApi.listKnowledge())
+  return data.knowledge.map(toKnowledge)
+}
 
-  await apiRequest<{ name: string }>(knowledgePath(name), {
-    method: 'POST',
-    body: JSON.stringify(knowledgeBody(input)),
-  })
+export async function createKnowledge(input: NewKnowledgeInput): Promise<Knowledge> {
+  const name = input.name.trim()
+  const knowledgeInput = toKnowledgeInput(input)
+
+  await apiCall(() => knowledgeApi.createKnowledge({ name, knowledgeInput }))
 
   return knowledgeFromResponse({
     name,
-    content: input.content,
+    content: knowledgeInput.content,
   })
 }
 
@@ -82,25 +77,25 @@ export async function updateKnowledge(
   id: string,
   input: UpdateKnowledgeInput,
 ): Promise<Knowledge> {
-  const body = knowledgeBody(input)
+  const knowledgeInput = toKnowledgeInput(input)
 
-  await apiRequest<{ name: string }>(knowledgePath(id), {
-    method: 'PUT',
-    body: JSON.stringify(body),
-  })
+  await apiCall(() =>
+    knowledgeApi.updateKnowledge({
+      name: id,
+      knowledgeInput,
+    }),
+  )
 
   return knowledgeFromResponse({
     name: id,
-    content: body.content,
+    content: knowledgeInput.content,
   })
 }
 
 export async function fetchKnowledgeUsage(name: string): Promise<KnowledgeUsage> {
-  return apiRequest<KnowledgeUsage>(
-    `${KNOWLEDGE_API_BASE}/${encodeURIComponent(name)}/usage`,
-  )
+  return apiCall(() => knowledgeApi.getKnowledgeUsage({ name }))
 }
 
 export async function deleteKnowledge(id: string): Promise<void> {
-  await apiRequest<void>(knowledgePath(id), { method: 'DELETE' })
+  await apiCall(() => knowledgeApi.deleteKnowledge({ name: id }))
 }

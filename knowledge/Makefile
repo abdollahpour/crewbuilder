@@ -1,6 +1,17 @@
 sync:
 	uv sync
 
+generate: generate-api generate-db
+
+generate-api:
+	PYTHONWARNINGS=ignore::FutureWarning:datamodel_code_generator.format \
+	uvx --from fastapi-code-generator fastapi-codegen \
+		--input openapi.yaml \
+		--output src/knowledge/generated/api \
+		--output-model-type pydantic_v2.BaseModel
+
+generate-db:
+	$(or $(wildcard .tools/sqlc),sqlc) generate
+
 dev: sync
-	uv run uvicorn app.main:app --reload --port 8005
-	
+	PYTHONPATH=src uv run uvicorn knowledge.main:app --reload --port 8005

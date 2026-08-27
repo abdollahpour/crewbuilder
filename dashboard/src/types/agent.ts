@@ -6,8 +6,9 @@ export type Agent = {
   id: string
   name: string
   model: string
-  description: string
-  rules: string
+  role: string
+  goal: string
+  backstory: string
   tools: string[]
   mcps: string[]
   skills: string[]
@@ -18,8 +19,9 @@ export type Agent = {
 export type NewAgentInput = {
   name: string
   model: string
-  description: string
-  rules: string
+  role: string
+  goal: string
+  backstory: string
   tools: string[]
   mcps: string[]
   skills: string[]
@@ -52,17 +54,25 @@ export function validateAgentModel(model: string): string | null {
   return null
 }
 
-export function validateAgentDescription(description: string): string | null {
-  if (!description.trim()) {
-    return 'Description is required'
+export function validateAgentRole(role: string): string | null {
+  if (!role.trim()) {
+    return 'Role is required'
   }
 
   return null
 }
 
-export function validateAgentRules(rules: string): string | null {
-  if (!rules.trim()) {
-    return 'Rules are required'
+export function validateAgentGoal(goal: string): string | null {
+  if (!goal.trim()) {
+    return 'Goal is required'
+  }
+
+  return null
+}
+
+export function validateAgentBackstory(backstory: string): string | null {
+  if (!backstory.trim()) {
+    return 'Backstory is required'
   }
 
   return null
@@ -98,8 +108,9 @@ export function truncateText(text: string, maxLength = 160): string {
 export function agentFromResponse(data: {
   name: string
   model: string
-  description: string
-  rules: string
+  role: string
+  goal: string
+  backstory: string
   tools?: string[]
   mcps?: string[]
   skills?: string[]
@@ -110,8 +121,9 @@ export function agentFromResponse(data: {
     id: data.name,
     name: data.name,
     model: data.model,
-    description: data.description,
-    rules: data.rules,
+    role: data.role,
+    goal: data.goal,
+    backstory: data.backstory,
     tools: data.tools ?? [],
     mcps: data.mcps ?? [],
     skills: data.skills ?? [],

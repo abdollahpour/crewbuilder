@@ -1,13 +1,10 @@
 import MenuIcon from '@mui/icons-material/Menu'
 import { AppBar, Box, IconButton, Toolbar } from '@mui/material'
-import { useState, type ReactNode } from 'react'
+import { useState } from 'react'
+import { Outlet } from 'react-router-dom'
 import Sidebar, { DRAWER_WIDTH } from './Sidebar'
 
-type LayoutProps = {
-  children: ReactNode
-}
-
-export default function Layout({ children }: LayoutProps) {
+export default function Layout() {
   const [mobileOpen, setMobileOpen] = useState(false)
 
   return (
@@ -44,7 +41,7 @@ export default function Layout({ children }: LayoutProps) {
         }}
       >
         <Toolbar sx={{ display: { xs: 'block', md: 'none' } }} />
-        {children}
+        <Outlet />
       </Box>
     </Box>
   )

@@ -10,6 +10,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { KnowledgeFormSkeleton } from '../components/KnowledgeSkeletons'
 import { useKnowledge } from '../context/KnowledgeContext'
+import { formValuesEqual, useUnsavedChangesGuard } from '../hooks/useUnsavedChangesGuard'
 import {
   formatContentSize,
   validateKnowledgeContent,
@@ -41,6 +42,10 @@ export default function EditKnowledge() {
     setContentError(validateKnowledgeContent(value) ?? '')
   }
 
+  const isSubmitting = updatingId === id
+  const isDirty = knowledge ? !formValuesEqual(content, knowledge.content) : false
+  const { allowLeave, dialog } = useUnsavedChangesGuard(isDirty)
+
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (!id) return
@@ -54,16 +59,26 @@ export default function EditKnowledge() {
     await updateKnowledge(id, {
       content,
     })
+    allowLeave()
     navigate('/knowledge')
   }
 
-  const isSubmitting = updatingId === id
+  function handleCancel() {
+    allowLeave()
+    navigate('/knowledge')
+  }
+
   const isSubmitDisabled =
     isSubmitting ||
     Boolean(validateKnowledgeContent(content))
 
   if (isLoading || !knowledge) {
-    return <KnowledgeFormSkeleton />
+    return (
+      <>
+        <KnowledgeFormSkeleton />
+        {dialog}
+      </>
+    )
   }
 
   return (
@@ -115,12 +130,13 @@ export default function EditKnowledge() {
             <Button type="submit" variant="contained" disabled={isSubmitDisabled}>
               Save Knowledge
             </Button>
-            <Button variant="outlined" onClick={() => navigate('/knowledge')}>
+            <Button variant="outlined" onClick={handleCancel}>
               Cancel
             </Button>
           </Box>
         </Stack>
       )}
+      {dialog}
     </Box>
   )
 }

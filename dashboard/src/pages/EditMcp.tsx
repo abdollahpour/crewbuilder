@@ -13,6 +13,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { NewMcpSkeleton } from '../components/McpSkeletons'
 import { useMcps } from '../context/McpContext'
+import { formValuesEqual, useUnsavedChangesGuard } from '../hooks/useUnsavedChangesGuard'
 import {
   headersToInputs,
   type McpHeaderInput,
@@ -87,6 +88,15 @@ export default function EditMcp() {
     setHeaderErrors((current) => current.filter((_, errorIndex) => errorIndex !== index))
   }
 
+  const isSubmitting = updatingId === id
+  const isDirty = mcp
+    ? !formValuesEqual(
+        { url, headers },
+        { url: mcp.url, headers: headersToInputs(mcp.headers) },
+      )
+    : false
+  const { allowLeave, dialog } = useUnsavedChangesGuard(isDirty)
+
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (!id) return
@@ -104,17 +114,27 @@ export default function EditMcp() {
       url: url.trim(),
       headers,
     })
+    allowLeave()
     navigate('/mcps')
   }
 
-  const isSubmitting = updatingId === id
+  function handleCancel() {
+    allowLeave()
+    navigate('/mcps')
+  }
+
   const isSubmitDisabled =
     isSubmitting ||
     Boolean(validateMcpUrl(url)) ||
     validateMcpHeaders(headers).some((error) => error.key || error.value)
 
   if (isLoading || !mcp) {
-    return <NewMcpSkeleton />
+    return (
+      <>
+        <NewMcpSkeleton />
+        {dialog}
+      </>
+    )
   }
 
   return (
@@ -201,12 +221,13 @@ export default function EditMcp() {
             <Button type="submit" variant="contained" disabled={isSubmitDisabled}>
               Save MCP
             </Button>
-            <Button variant="outlined" onClick={() => navigate('/mcps')}>
+            <Button variant="outlined" onClick={handleCancel}>
               Cancel
             </Button>
           </Box>
         </Stack>
       )}
+      {dialog}
     </Box>
   )
 }

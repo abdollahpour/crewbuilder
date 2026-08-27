@@ -1,7 +1,7 @@
 [project]
 name = "knowledge"
 version = "0.1.0"
-description = "Manage knowledge"
+description = "Knowledge registry service"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [

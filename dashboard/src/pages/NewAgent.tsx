@@ -13,10 +13,11 @@ import AgentSkillSelector from '../components/AgentSkillSelector'
 import { AgentFormSkeleton } from '../components/AgentSkeletons'
 import { useAgents } from '../context/AgentContext'
 import {
-  validateAgentDescription,
+  validateAgentBackstory,
+  validateAgentGoal,
   validateAgentModel,
   validateAgentNameUnique,
-  validateAgentRules,
+  validateAgentRole,
 } from '../types/agent'
 
 export default function NewAgent() {
@@ -24,16 +25,18 @@ export default function NewAgent() {
   const { addAgent, isAdding, agents } = useAgents()
   const [name, setName] = useState('')
   const [model, setModel] = useState('')
-  const [description, setDescription] = useState('')
-  const [rules, setRules] = useState('')
+  const [role, setRole] = useState('')
+  const [goal, setGoal] = useState('')
+  const [backstory, setBackstory] = useState('')
   const [selectedTools, setSelectedTools] = useState<string[]>([])
   const [selectedMcps, setSelectedMcps] = useState<string[]>([])
   const [selectedSkills, setSelectedSkills] = useState<string[]>([])
   const [selectedKnowledge, setSelectedKnowledge] = useState<string[]>([])
   const [nameError, setNameError] = useState('')
   const [modelError, setModelError] = useState('')
-  const [descriptionError, setDescriptionError] = useState('')
-  const [rulesError, setRulesError] = useState('')
+  const [roleError, setRoleError] = useState('')
+  const [goalError, setGoalError] = useState('')
+  const [backstoryError, setBackstoryError] = useState('')
 
   function handleNameChange(value: string) {
     setName(value)
@@ -45,14 +48,19 @@ export default function NewAgent() {
     setModelError(validateAgentModel(value) ?? '')
   }
 
-  function handleDescriptionChange(value: string) {
-    setDescription(value)
-    setDescriptionError(validateAgentDescription(value) ?? '')
+  function handleRoleChange(value: string) {
+    setRole(value)
+    setRoleError(validateAgentRole(value) ?? '')
   }
 
-  function handleRulesChange(value: string) {
-    setRules(value)
-    setRulesError(validateAgentRules(value) ?? '')
+  function handleGoalChange(value: string) {
+    setGoal(value)
+    setGoalError(validateAgentGoal(value) ?? '')
+  }
+
+  function handleBackstoryChange(value: string) {
+    setBackstory(value)
+    setBackstoryError(validateAgentBackstory(value) ?? '')
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -60,21 +68,26 @@ export default function NewAgent() {
 
     const nextNameError = validateAgentNameUnique(name, agents) ?? ''
     const nextModelError = validateAgentModel(model) ?? ''
-    const nextDescriptionError = validateAgentDescription(description) ?? ''
-    const nextRulesError = validateAgentRules(rules) ?? ''
+    const nextRoleError = validateAgentRole(role) ?? ''
+    const nextGoalError = validateAgentGoal(goal) ?? ''
+    const nextBackstoryError = validateAgentBackstory(backstory) ?? ''
 
     setNameError(nextNameError)
     setModelError(nextModelError)
-    setDescriptionError(nextDescriptionError)
-    setRulesError(nextRulesError)
+    setRoleError(nextRoleError)
+    setGoalError(nextGoalError)
+    setBackstoryError(nextBackstoryError)
 
-    if (nextNameError || nextModelError || nextDescriptionError || nextRulesError) return
+    if (nextNameError || nextModelError || nextRoleError || nextGoalError || nextBackstoryError) {
+      return
+    }
 
     await addAgent({
       name: name.trim(),
       model: model.trim(),
-      description: description.trim(),
-      rules: rules.trim(),
+      role: role.trim(),
+      goal: goal.trim(),
+      backstory: backstory.trim(),
       tools: selectedTools,
       mcps: selectedMcps,
       skills: selectedSkills,
@@ -87,8 +100,9 @@ export default function NewAgent() {
     isAdding ||
     Boolean(validateAgentNameUnique(name, agents)) ||
     Boolean(validateAgentModel(model)) ||
-    Boolean(validateAgentDescription(description)) ||
-    Boolean(validateAgentRules(rules))
+    Boolean(validateAgentRole(role)) ||
+    Boolean(validateAgentGoal(goal)) ||
+    Boolean(validateAgentBackstory(backstory))
 
   return (
     <Box component="form" onSubmit={handleSubmit} noValidate>
@@ -128,13 +142,25 @@ export default function NewAgent() {
             required
           />
           <TextField
-            label="Description"
-            value={description}
-            onChange={(event) => handleDescriptionChange(event.target.value)}
-            error={Boolean(descriptionError)}
+            label="Role"
+            value={role}
+            onChange={(event) => handleRoleChange(event.target.value)}
+            error={Boolean(roleError)}
             helperText={
-              descriptionError ||
-              `${description.length.toLocaleString()} characters · Short summary of what this agent does`
+              roleError ||
+              `${role.length.toLocaleString()} characters · Agent role title that appears in prompts and logs`
+            }
+            fullWidth
+            required
+          />
+          <TextField
+            label="Goal"
+            value={goal}
+            onChange={(event) => handleGoalChange(event.target.value)}
+            error={Boolean(goalError)}
+            helperText={
+              goalError ||
+              `${goal.length.toLocaleString()} characters · The agent's primary objective`
             }
             fullWidth
             required
@@ -142,13 +168,13 @@ export default function NewAgent() {
             minRows={4}
           />
           <TextField
-            label="Rules"
-            value={rules}
-            onChange={(event) => handleRulesChange(event.target.value)}
-            error={Boolean(rulesError)}
+            label="Backstory"
+            value={backstory}
+            onChange={(event) => handleBackstoryChange(event.target.value)}
+            error={Boolean(backstoryError)}
             helperText={
-              rulesError ||
-              `${rules.length.toLocaleString()} characters · Instructions and constraints for this agent`
+              backstoryError ||
+              `${backstory.length.toLocaleString()} characters · Background that shapes this agent's personality and approach`
             }
             fullWidth
             required

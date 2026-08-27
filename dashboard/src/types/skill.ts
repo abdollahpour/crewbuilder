@@ -45,69 +45,14 @@ export function normalizeSkillTools(tools: string[]): string[] {
 
 const SKILL_NAME_PATTERN = /^[a-zA-Z0-9_-]{2,50}$/
 
-export const MIN_SKILL_DESCRIPTION_LENGTH = 100
+export const MIN_SKILL_DESCRIPTION_LENGTH = 1
 export const MAX_SKILL_DESCRIPTION_LENGTH = 500
 export const MAX_SKILL_MD_LENGTH = 1_000_000
 
-export const EXAMPLE_SKILL_NAME = 'example_skill'
-
-export const EXAMPLE_SKILL_DESCRIPTION =
-  'Creates well-structured RESTful API endpoints with proper error handling, validation, and documentation. Use when building new endpoints, designing APIs, or implementing CRUD operations.'
-
-export const EXAMPLE_SKILL_MD = `# API Endpoint Creator
-
-## Overview
-
-This skill helps create well-structured RESTful API endpoints with proper
-error handling, validation, and documentation.
-
-## When to Use
-
-- Creating new API endpoints
-- Implementing CRUD operations
-- Designing RESTful resources
-- Adding validation to existing endpoints
-
-## Process
-
-### Step 1: Analyze Requirements
-Understand what resource is being created and what operations are needed.
-
-### Step 2: Design the Endpoint
-Determine:
-- HTTP method (GET, POST, PUT, DELETE)
-- URL structure
-- Request/response format
-
-### Step 3: Implement
-Create the endpoint with:
-- Input validation
-- Error handling
-- Proper status codes
-- Documentation comments
-
-### Step 4: Verify
-Check against REST best practices.
-
-## Output Format
-
-Provide:
-1. Endpoint implementation code
-2. Request/response examples
-3. Error cases
-
-## Notes
-
-* Always validate path parameters
-* Use consistent error response format
-* Include rate limiting for public endpoints
-`
-
 export function formatSkillDescriptionSize(length: number): string {
-  const min = MIN_SKILL_DESCRIPTION_LENGTH.toLocaleString()
   const max = MAX_SKILL_DESCRIPTION_LENGTH.toLocaleString()
 
-  return `${length.toLocaleString()} / ${min}–${max} characters`
+  return `${length.toLocaleString()} / ${max} characters max`
 }
 
 export function formatSkillMdSize(length: number): string {
@@ -139,10 +84,10 @@ export function validateSkillName(name: string): string | null {
 }
 
 export function validateSkillDescription(description: string): string | null {
-  const length = description.length
+  const length = description.trim().length
 
   if (length < MIN_SKILL_DESCRIPTION_LENGTH) {
-    return `Description must be at least ${MIN_SKILL_DESCRIPTION_LENGTH.toLocaleString()} characters`
+    return 'Description is required'
   }
 
   if (length > MAX_SKILL_DESCRIPTION_LENGTH) {

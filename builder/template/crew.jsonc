@@ -13,7 +13,7 @@
 
         // What the task should accomplish
         // Use {placeholder} inputs here; crewai run prompts for missing values
-        "description": "Fulfill the following user request: {topic}\n\n## Crew rules\n{{CREW_RULES}}\n\nFollow the crew rules above for every decision and delegated subtask. Delegate subtasks to team members based on their roles and skills. Review their outputs and ensure the final deliverable addresses the full request.",
+        "description": "Fulfill the following user request: {topic}\n\nDelegate subtasks to team members based on their roles and skills. Review their outputs and ensure the final deliverable addresses the full request.",
 
         // Clear definition of what the output should look like
         "expected_output": "A complete markdown deliverable that addresses the user request. No fenced code blocks around the whole document.",

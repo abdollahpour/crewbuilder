@@ -23,13 +23,7 @@ def _get_json(url: str) -> dict:
 
 def fetch_crew(name: str) -> Crew:
     encoded = quote(name, safe="")
-    data = _get_json(f"{settings.crew_service_url}/api/v1/crews/{encoded}")
-    return Crew(
-        name=data["name"],
-        model=data["model"],
-        rules=data["rules"],
-        agents=data.get("agents") or [],
-    )
+    return Crew.model_validate(_get_json(f"{settings.crew_service_url}/api/v1/crews/{encoded}"))
 
 
 def fetch_agent(name: str) -> Agent:

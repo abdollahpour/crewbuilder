@@ -1,0 +1,35 @@
+{
+  "$schema": "./node_modules/@openapitools/openapi-generator-cli/config.schema.json",
+  "spaces": 2,
+  "generator-cli": {
+    "version": "7.25.0",
+    "useDocker": true,
+    "generators": {
+      "agent": {
+        "generatorName": "typescript-fetch",
+        "inputSpec": "../agent/openapi.yaml",
+        "output": "src/generated/api/agent"
+      },
+      "skill": {
+        "generatorName": "typescript-fetch",
+        "inputSpec": "../skill/openapi.yaml",
+        "output": "src/generated/api/skill"
+      },
+      "knowledge": {
+        "generatorName": "typescript-fetch",
+        "inputSpec": "../knowledge/openapi.yaml",
+        "output": "src/generated/api/knowledge"
+      },
+      "crew": {
+        "generatorName": "typescript-fetch",
+        "inputSpec": "../crew/openapi.yaml",
+        "output": "src/generated/api/crew"
+      },
+      "mcp": {
+        "generatorName": "typescript-fetch",
+        "inputSpec": "../mcp/openapi.yaml",
+        "output": "src/generated/api/mcp"
+      }
+    }
+  }
+}

@@ -1,0 +1,325 @@
+openapi: 3.1.0
+info:
+  title: Knowledge
+  description: Knowledge registry service
+  version: 0.1.0
+
+servers:
+  - url: http://localhost:8005
+    description: Local knowledge service
+
+paths:
+  /probe:
+    get:
+      operationId: probe
+      summary: Check service and database health
+      responses:
+        "200":
+          description: Service and database are reachable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProbeOk"
+              example:
+                service: ok
+                database: ok
+        "503":
+          description: Database is unreachable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProbeError"
+              example:
+                error: connection refused
+
+  /api/v1/knowledge:
+    get:
+      operationId: listKnowledge
+      summary: List all knowledge
+      responses:
+        "200":
+          description: Knowledge ordered by name
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KnowledgeListResponse"
+
+  /api/v1/knowledge/{name}:
+    parameters:
+      - $ref: "#/components/parameters/KnowledgeName"
+    get:
+      operationId: getKnowledge
+      summary: Get knowledge by name
+      responses:
+        "200":
+          description: Knowledge found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KnowledgeResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+    post:
+      operationId: createKnowledge
+      summary: Create knowledge
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/KnowledgeInput"
+      responses:
+        "201":
+          description: Knowledge created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KnowledgeNameResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "409":
+          description: Knowledge already exists
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorDetail"
+              example:
+                detail: Knowledge already exists
+        "422":
+          $ref: "#/components/responses/ValidationError"
+    put:
+      operationId: updateKnowledge
+      summary: Replace knowledge
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/KnowledgeInput"
+      responses:
+        "200":
+          description: Knowledge updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KnowledgeNameResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+    delete:
+      operationId: deleteKnowledge
+      summary: Delete knowledge
+      responses:
+        "204":
+          description: Knowledge deleted
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "409":
+          description: Knowledge is still referenced by agents or skills
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorDetail"
+              example:
+                detail: "Cannot delete knowledge in use by agents: researcher; skills: weather-lookup"
+        "502":
+          $ref: "#/components/responses/RegistryUnavailable"
+
+  /api/v1/knowledge/{name}/usage:
+    get:
+      operationId: getKnowledgeUsage
+      summary: List agents and skills that use knowledge
+      parameters:
+        - $ref: "#/components/parameters/KnowledgeName"
+      responses:
+        "200":
+          description: Agent and skill names that reference the knowledge
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KnowledgeUsageResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "502":
+          $ref: "#/components/responses/RegistryUnavailable"
+
+components:
+  parameters:
+    KnowledgeName:
+      name: name
+      in: path
+      required: true
+      description: 2–50 letters, numbers, underscores, or hyphens
+      schema:
+        $ref: "#/components/schemas/KnowledgeName"
+
+  responses:
+    BadRequest:
+      description: Content is too large
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorDetail"
+          example:
+            detail: Content must be at most 1 MB
+    NotFound:
+      description: Knowledge not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorDetail"
+          example:
+            detail: Knowledge not found
+    ValidationError:
+      description: Path or request body failed schema validation
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/HTTPValidationError"
+    RegistryUnavailable:
+      description: Agent or skill registry request failed
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorDetail"
+          examples:
+            unavailable:
+              value:
+                detail: "Registry unavailable: http://localhost:8003/api/v1/agents/usage/knowledge/cities"
+            failed:
+              value:
+                detail: "Registry request failed: http://localhost:8003/api/v1/agents/usage/knowledge/cities (500)"
+
+  schemas:
+    KnowledgeName:
+      type: string
+      minLength: 2
+      maxLength: 50
+      pattern: "^[a-zA-Z0-9_-]{2,50}$"
+      example: cities
+
+    KnowledgeInput:
+      type: object
+      additionalProperties: false
+      required:
+        - content
+      properties:
+        content:
+          type: string
+          minLength: 1
+          maxLength: 1000000
+      example:
+        content: |
+          Berlin is the capital of Germany.
+
+    KnowledgeResponse:
+      type: object
+      required:
+        - name
+        - content
+        - updated_at
+      properties:
+        name:
+          $ref: "#/components/schemas/KnowledgeName"
+        content:
+          type: string
+        updated_at:
+          type: string
+          format: date-time
+
+    KnowledgeListResponse:
+      type: object
+      required:
+        - knowledge
+      properties:
+        knowledge:
+          type: array
+          items:
+            $ref: "#/components/schemas/KnowledgeResponse"
+
+    KnowledgeNameResponse:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          $ref: "#/components/schemas/KnowledgeName"
+
+    KnowledgeUsageResponse:
+      type: object
+      required:
+        - agents
+        - skills
+      properties:
+        agents:
+          type: array
+          items:
+            type: string
+          example:
+            - researcher
+        skills:
+          type: array
+          items:
+            type: string
+          example:
+            - weather-lookup
+
+    ProbeOk:
+      type: object
+      required:
+        - service
+        - database
+      properties:
+        service:
+          type: string
+          const: ok
+        database:
+          type: string
+          const: ok
+
+    ProbeError:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: string
+
+    ErrorDetail:
+      type: object
+      required:
+        - detail
+      properties:
+        detail:
+          type: string
+
+    ValidationError:
+      type: object
+      properties:
+        loc:
+          type: array
+          items:
+            anyOf:
+              - type: string
+              - type: integer
+        msg:
+          type: string
+        type:
+          type: string
+
+    HTTPValidationError:
+      type: object
+      properties:
+        detail:
+          type: array
+          items:
+            $ref: "#/components/schemas/ValidationError"

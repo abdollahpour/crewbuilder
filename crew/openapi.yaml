@@ -1,0 +1,319 @@
+openapi: 3.1.0
+info:
+  title: Crew
+  description: Crew management service
+  version: 0.1.0
+
+servers:
+  - url: http://localhost:8006
+    description: Local crew service
+
+paths:
+  /probe:
+    get:
+      operationId: probe
+      summary: Check service and database health
+      responses:
+        "200":
+          description: Service and database are reachable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProbeOk"
+              example:
+                service: ok
+                database: ok
+        "503":
+          description: Database is unreachable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProbeError"
+              example:
+                error: connection refused
+
+  /api/v1/crews:
+    get:
+      operationId: listCrews
+      summary: List all crews
+      responses:
+        "200":
+          description: Crews ordered by name
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CrewListResponse"
+
+  /api/v1/crews/usage/agent/{agent_name}:
+    get:
+      operationId: listAgentUsage
+      summary: List crews that reference an agent
+      parameters:
+        - $ref: "#/components/parameters/AgentName"
+      responses:
+        "200":
+          description: Crew names that include the agent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReferenceListResponse"
+
+  /api/v1/crews/{name}:
+    parameters:
+      - $ref: "#/components/parameters/CrewName"
+    get:
+      operationId: getCrew
+      summary: Get a crew by name
+      responses:
+        "200":
+          description: Crew found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CrewResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+    post:
+      operationId: createCrew
+      summary: Create a crew
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CrewInput"
+      responses:
+        "201":
+          description: Crew created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CrewNameResponse"
+        "409":
+          description: Crew already exists
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorDetail"
+              example:
+                detail: Crew already exists
+        "422":
+          $ref: "#/components/responses/ValidationError"
+    put:
+      operationId: updateCrew
+      summary: Replace a crew
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CrewInput"
+      responses:
+        "200":
+          description: Crew updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CrewNameResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+    delete:
+      operationId: deleteCrew
+      summary: Delete a crew
+      responses:
+        "204":
+          description: Crew deleted
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+
+components:
+  parameters:
+    CrewName:
+      name: name
+      in: path
+      required: true
+      description: 2–50 letters, numbers, underscores, or hyphens
+      schema:
+        $ref: "#/components/schemas/CrewName"
+    AgentName:
+      name: agent_name
+      in: path
+      required: true
+      schema:
+        type: string
+        minLength: 1
+
+  responses:
+    NotFound:
+      description: Crew not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorDetail"
+          example:
+            detail: Crew not found
+    ValidationError:
+      description: Path or request body failed schema validation
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/HTTPValidationError"
+
+  schemas:
+    CrewName:
+      type: string
+      minLength: 2
+      maxLength: 50
+      pattern: "^[a-zA-Z0-9_-]{2,50}$"
+      example: travel-assistant
+
+    CrewInput:
+      type: object
+      additionalProperties: false
+      required:
+        - model
+        - role
+        - goal
+        - backstory
+      properties:
+        model:
+          type: string
+          minLength: 1
+        role:
+          type: string
+          minLength: 1
+        goal:
+          type: string
+          minLength: 1
+        backstory:
+          type: string
+          minLength: 1
+        agents:
+          type: array
+          items:
+            type: string
+          default: []
+      example:
+        model: ollama/qwen3:8b
+        role: Travel Planning Coordinator
+        goal: Coordinate travel planning by delegating tasks to specialists.
+        backstory: Don't retry anything over 2 times.
+        agents:
+          - weather-lookup
+          - hotel-agent
+
+    CrewResponse:
+      type: object
+      required:
+        - name
+        - model
+        - role
+        - goal
+        - backstory
+        - agents
+        - updated_at
+      properties:
+        name:
+          $ref: "#/components/schemas/CrewName"
+        model:
+          type: string
+        role:
+          type: string
+        goal:
+          type: string
+        backstory:
+          type: string
+        agents:
+          type: array
+          items:
+            type: string
+        updated_at:
+          type: string
+          format: date-time
+
+    CrewListResponse:
+      type: object
+      required:
+        - crews
+      properties:
+        crews:
+          type: array
+          items:
+            $ref: "#/components/schemas/CrewResponse"
+
+    CrewNameResponse:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          $ref: "#/components/schemas/CrewName"
+
+    ReferenceListResponse:
+      type: object
+      required:
+        - references
+      properties:
+        references:
+          type: array
+          items:
+            $ref: "#/components/schemas/CrewName"
+          example:
+            - travel-assistant
+
+    ProbeOk:
+      type: object
+      required:
+        - service
+        - database
+      properties:
+        service:
+          type: string
+          const: ok
+        database:
+          type: string
+          const: ok
+
+    ProbeError:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: string
+
+    ErrorDetail:
+      type: object
+      required:
+        - detail
+      properties:
+        detail:
+          type: string
+
+    ValidationError:
+      type: object
+      properties:
+        loc:
+          type: array
+          items:
+            anyOf:
+              - type: string
+              - type: integer
+        msg:
+          type: string
+        type:
+          type: string
+
+    HTTPValidationError:
+      type: object
+      properties:
+        detail:
+          type: array
+          items:
+            $ref: "#/components/schemas/ValidationError"

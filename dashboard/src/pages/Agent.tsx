@@ -119,7 +119,7 @@ export default function Agent() {
         <ResourceListEmpty
           icon={<SmartToyIcon sx={{ fontSize: 48 }} />}
           title="No agents"
-          description="You have not configured any agents yet. Add one with a description and rules to guide its behavior."
+          description="You have not configured any agents yet. Add one with a role, goal, and backstory to guide its behavior."
           action={
             <Button variant="contained" startIcon={<AddIcon />} onClick={() => navigate('/agents/new')}>
               Add Agent
@@ -132,8 +132,8 @@ export default function Agent() {
             <ResourceListItem
               key={agent.id}
               title={agent.name}
-              meta={agent.model}
-              description={truncateText(agent.description)}
+              meta={`${agent.model} · ${agent.role}`}
+              description={truncateText(agent.goal)}
               showDivider={index < agents.length - 1}
               actions={
                 <>

@@ -6,8 +6,9 @@ from pydantic import BaseModel, Field
 class Agent(BaseModel):
     name: str
     model: str
-    description: str
-    rules: str
+    role: str
+    goal: str
+    backstory: str
     tools: list[str] = Field(default_factory=list)
     mcps: list[str] = Field(default_factory=list)
     skills: list[str] = Field(default_factory=list)
@@ -39,5 +40,7 @@ class McpServer(BaseModel):
 class Crew(BaseModel):
     name: str
     model: str
-    rules: str
+    role: str
+    goal: str
+    backstory: str
     agents: list[str] = Field(default_factory=list)

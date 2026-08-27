@@ -1,0 +1,433 @@
+openapi: 3.1.0
+info:
+  title: Skill
+  description: Skill registry service
+  version: 0.1.0
+
+servers:
+  - url: http://localhost:8002
+    description: Local skill service
+
+paths:
+  /probe:
+    get:
+      operationId: probe
+      summary: Check service and database health
+      responses:
+        "200":
+          description: Service and database are reachable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProbeOk"
+              example:
+                service: ok
+                database: ok
+        "503":
+          description: Database is unreachable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProbeError"
+              example:
+                error: connection refused
+
+  /api/v1/skills:
+    get:
+      operationId: listSkills
+      summary: List all skills
+      responses:
+        "200":
+          description: Skills ordered by name
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SkillListResponse"
+
+  /api/v1/skills/tools:
+    get:
+      operationId: listTools
+      summary: List tools that skills may require
+      responses:
+        "200":
+          description: Allowed CrewAI and extra tool names
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ToolListResponse"
+
+  /api/v1/skills/usage/knowledge/{knowledge_name}:
+    get:
+      operationId: listKnowledgeUsage
+      summary: List skills that reference a knowledge source
+      parameters:
+        - $ref: "#/components/parameters/KnowledgeName"
+      responses:
+        "200":
+          description: Skill names that include the knowledge source
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReferenceListResponse"
+
+  /api/v1/skills/usage/mcp/{mcp_name}:
+    get:
+      operationId: listMcpUsage
+      summary: List skills that reference an MCP server
+      parameters:
+        - $ref: "#/components/parameters/McpName"
+      responses:
+        "200":
+          description: Skill names that include the MCP server
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReferenceListResponse"
+
+  /api/v1/skills/{name}:
+    parameters:
+      - $ref: "#/components/parameters/SkillName"
+    get:
+      operationId: getSkill
+      summary: Get a skill by name
+      responses:
+        "200":
+          description: Skill found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SkillResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+    post:
+      operationId: createSkill
+      summary: Create a skill
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SkillInput"
+      responses:
+        "201":
+          description: Skill created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SkillNameResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "409":
+          description: Skill already exists
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorDetail"
+              example:
+                detail: Skill already exists
+        "422":
+          $ref: "#/components/responses/ValidationError"
+    put:
+      operationId: updateSkill
+      summary: Replace a skill
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SkillInput"
+      responses:
+        "200":
+          description: Skill updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SkillNameResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+    delete:
+      operationId: deleteSkill
+      summary: Delete a skill
+      responses:
+        "204":
+          description: Skill deleted
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "409":
+          description: Skill is still referenced by agents
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorDetail"
+              example:
+                detail: "Cannot delete skill in use by agents: researcher"
+        "502":
+          $ref: "#/components/responses/RegistryUnavailable"
+
+  /api/v1/skills/{name}/usage:
+    get:
+      operationId: getSkillUsage
+      summary: List agents that use a skill
+      parameters:
+        - $ref: "#/components/parameters/SkillName"
+      responses:
+        "200":
+          description: Agent names that reference the skill
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SkillUsageResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "502":
+          $ref: "#/components/responses/RegistryUnavailable"
+
+components:
+  parameters:
+    SkillName:
+      name: name
+      in: path
+      required: true
+      description: 2–50 letters, numbers, underscores, or hyphens
+      schema:
+        $ref: "#/components/schemas/SkillName"
+    KnowledgeName:
+      name: knowledge_name
+      in: path
+      required: true
+      schema:
+        type: string
+        minLength: 1
+    McpName:
+      name: mcp_name
+      in: path
+      required: true
+      schema:
+        type: string
+        minLength: 1
+
+  responses:
+    BadRequest:
+      description: Unknown tool
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorDetail"
+          example:
+            detail: "Unknown tool: NotARealTool"
+    NotFound:
+      description: Skill not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorDetail"
+          example:
+            detail: Skill not found
+    ValidationError:
+      description: Path or request body failed schema validation
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/HTTPValidationError"
+    RegistryUnavailable:
+      description: Agent registry request failed
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorDetail"
+          examples:
+            unavailable:
+              value:
+                detail: "Registry unavailable: http://localhost:8003/api/v1/agents/usage/skill/example_skill"
+            failed:
+              value:
+                detail: "Registry request failed: http://localhost:8003/api/v1/agents/usage/skill/example_skill (500)"
+
+  schemas:
+    SkillName:
+      type: string
+      minLength: 2
+      maxLength: 50
+      pattern: "^[a-zA-Z0-9_-]{2,50}$"
+      example: example_skill
+
+    SkillInput:
+      type: object
+      additionalProperties: false
+      required:
+        - description
+        - skill_md
+      properties:
+        description:
+          type: string
+          minLength: 1
+          maxLength: 500
+        skill_md:
+          type: string
+          minLength: 1
+          maxLength: 1000000
+        tools_required:
+          type: array
+          items:
+            type: string
+          default: []
+          description: Must be names from GET /api/v1/skills/tools
+        knowledge:
+          type: array
+          items:
+            type: string
+          default: []
+      example:
+        description: Creates well-structured RESTful API endpoints with proper error handling, validation, and documentation. Use when building new endpoints, designing APIs, or implementing CRUD operations.
+        skill_md: |
+          # API Endpoint Creator
+
+          This skill helps create well-structured RESTful API endpoints.
+        tools_required:
+          - HttpCallTool
+        knowledge:
+          - api-style-guide
+
+    SkillResponse:
+      type: object
+      required:
+        - name
+        - description
+        - skill_md
+        - tools_required
+        - knowledge
+        - updated_at
+      properties:
+        name:
+          $ref: "#/components/schemas/SkillName"
+        description:
+          type: string
+        skill_md:
+          type: string
+        tools_required:
+          type: array
+          items:
+            type: string
+        knowledge:
+          type: array
+          items:
+            type: string
+        updated_at:
+          type: string
+          format: date-time
+
+    SkillListResponse:
+      type: object
+      required:
+        - skills
+      properties:
+        skills:
+          type: array
+          items:
+            $ref: "#/components/schemas/SkillResponse"
+
+    SkillNameResponse:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          $ref: "#/components/schemas/SkillName"
+
+    ToolListResponse:
+      type: object
+      required:
+        - tools
+      properties:
+        tools:
+          type: array
+          items:
+            type: string
+          example:
+            - CodeInterpreterTool
+            - HttpCallTool
+
+    ReferenceListResponse:
+      type: object
+      required:
+        - references
+      properties:
+        references:
+          type: array
+          items:
+            $ref: "#/components/schemas/SkillName"
+          example:
+            - example_skill
+
+    SkillUsageResponse:
+      type: object
+      required:
+        - agents
+      properties:
+        agents:
+          type: array
+          items:
+            type: string
+          example:
+            - researcher
+
+    ProbeOk:
+      type: object
+      required:
+        - service
+        - database
+      properties:
+        service:
+          type: string
+          const: ok
+        database:
+          type: string
+          const: ok
+
+    ProbeError:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: string
+
+    ErrorDetail:
+      type: object
+      required:
+        - detail
+      properties:
+        detail:
+          type: string
+
+    ValidationError:
+      type: object
+      properties:
+        loc:
+          type: array
+          items:
+            anyOf:
+              - type: string
+              - type: integer
+        msg:
+          type: string
+        type:
+          type: string
+
+    HTTPValidationError:
+      type: object
+      properties:
+        detail:
+          type: array
+          items:
+            $ref: "#/components/schemas/ValidationError"

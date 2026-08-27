@@ -13,6 +13,7 @@ import SkillToolsSelector from '../components/SkillToolsSelector'
 import AgentMcpSelector from '../components/AgentMcpSelector'
 import AgentKnowledgeSelector from '../components/AgentKnowledgeSelector'
 import { useSkills } from '../context/SkillContext'
+import { formValuesEqual, useUnsavedChangesGuard } from '../hooks/useUnsavedChangesGuard'
 import {
   formatSkillDescriptionSize,
   formatSkillMdSize,
@@ -60,6 +61,21 @@ export default function EditSkill() {
     setSkillMdError(validateSkillMd(value) ?? '')
   }
 
+  const isSubmitting = updatingId === id
+  const isDirty = skill
+    ? !formValuesEqual(
+        { description, skillMd, toolsRequired, mcps, knowledge },
+        {
+          description: skill.description,
+          skillMd: skill.skillMd,
+          toolsRequired: skill.toolsRequired,
+          mcps: skill.mcps,
+          knowledge: skill.knowledge,
+        },
+      )
+    : false
+  const { allowLeave, dialog } = useUnsavedChangesGuard(isDirty)
+
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (!id) return
@@ -79,17 +95,27 @@ export default function EditSkill() {
       mcps,
       knowledge,
     })
+    allowLeave()
     navigate('/skills')
   }
 
-  const isSubmitting = updatingId === id
+  function handleCancel() {
+    allowLeave()
+    navigate('/skills')
+  }
+
   const isSubmitDisabled =
     isSubmitting ||
     Boolean(validateSkillDescription(description)) ||
     Boolean(validateSkillMd(skillMd))
 
   if (isLoading || !skill) {
-    return <SkillFormSkeleton />
+    return (
+      <>
+        <SkillFormSkeleton />
+        {dialog}
+      </>
+    )
   }
 
   return (
@@ -170,12 +196,13 @@ export default function EditSkill() {
             <Button type="submit" variant="contained" disabled={isSubmitDisabled}>
               Save Skill
             </Button>
-            <Button variant="outlined" onClick={() => navigate('/skills')}>
+            <Button variant="outlined" onClick={handleCancel}>
               Cancel
             </Button>
           </Box>
         </Stack>
       )}
+      {dialog}
     </Box>
   )
 }

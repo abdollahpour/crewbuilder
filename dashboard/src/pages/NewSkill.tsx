@@ -14,9 +14,6 @@ import AgentMcpSelector from '../components/AgentMcpSelector'
 import AgentKnowledgeSelector from '../components/AgentKnowledgeSelector'
 import { useSkills } from '../context/SkillContext'
 import {
-  EXAMPLE_SKILL_DESCRIPTION,
-  EXAMPLE_SKILL_MD,
-  EXAMPLE_SKILL_NAME,
   formatSkillDescriptionSize,
   formatSkillMdSize,
   validateSkillDescription,
@@ -27,9 +24,9 @@ import {
 export default function NewSkill() {
   const navigate = useNavigate()
   const { addSkill, isAdding, skills } = useSkills()
-  const [name, setName] = useState(EXAMPLE_SKILL_NAME)
-  const [description, setDescription] = useState(EXAMPLE_SKILL_DESCRIPTION)
-  const [skillMd, setSkillMd] = useState(EXAMPLE_SKILL_MD)
+  const [name, setName] = useState('')
+  const [description, setDescription] = useState('')
+  const [skillMd, setSkillMd] = useState('')
   const [toolsRequired, setToolsRequired] = useState<string[]>([])
   const [mcps, setMcps] = useState<string[]>([])
   const [knowledge, setKnowledge] = useState<string[]>([])

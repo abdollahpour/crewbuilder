@@ -1,4 +1,4 @@
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
+import { createBrowserRouter, Navigate, RouterProvider } from 'react-router-dom'
 import { AgentProvider } from './context/AgentContext'
 import { GraphifysProvider } from './context/GraphifysContext'
 import { KnowledgeProvider } from './context/KnowledgeContext'
@@ -26,6 +26,35 @@ import Crew from './pages/Crew'
 import NewCrew from './pages/NewCrew'
 import EditCrew from './pages/EditCrew'
 
+const router = createBrowserRouter([
+  {
+    element: <Layout />,
+    children: [
+      { path: '/', element: <Navigate to="/crews" replace /> },
+      { path: '/crews', element: <Crew /> },
+      { path: '/crews/new', element: <NewCrew /> },
+      { path: '/crews/:id/edit', element: <EditCrew /> },
+      { path: '/graphifys', element: <Graphifys /> },
+      { path: '/graphifys/new', element: <NewGraphify /> },
+      { path: '/knowledge', element: <Knowledge /> },
+      { path: '/knowledge/new', element: <NewKnowledge /> },
+      { path: '/knowledge/:id/edit', element: <EditKnowledge /> },
+      { path: '/skills', element: <Skill /> },
+      { path: '/skills/new', element: <NewSkill /> },
+      { path: '/skills/:id/edit', element: <EditSkill /> },
+      { path: '/agents', element: <Agent /> },
+      { path: '/agents/new', element: <NewAgent /> },
+      { path: '/agents/:id/edit', element: <EditAgent /> },
+      { path: '/mcps', element: <Mcp /> },
+      { path: '/mcps/new', element: <NewMcp /> },
+      { path: '/mcps/:id/edit', element: <EditMcp /> },
+      { path: '/mcps/:id/test', element: <McpTest /> },
+      { path: '/mcps/:id', element: <McpDetail /> },
+      { path: '*', element: <Navigate to="/" replace /> },
+    ],
+  },
+])
+
 function App() {
   return (
     <GraphifysProvider>
@@ -34,33 +63,7 @@ function App() {
           <SkillProvider>
             <KnowledgeProvider>
               <CrewProvider>
-                <BrowserRouter>
-                  <Layout>
-                    <Routes>
-                      <Route path="/" element={<Navigate to="/crews" replace />} />
-                      <Route path="/crews" element={<Crew />} />
-                      <Route path="/crews/new" element={<NewCrew />} />
-                      <Route path="/crews/:id/edit" element={<EditCrew />} />
-                      <Route path="/graphifys" element={<Graphifys />} />
-                      <Route path="/graphifys/new" element={<NewGraphify />} />
-                      <Route path="/knowledge" element={<Knowledge />} />
-                      <Route path="/knowledge/new" element={<NewKnowledge />} />
-                      <Route path="/knowledge/:id/edit" element={<EditKnowledge />} />
-                      <Route path="/skills" element={<Skill />} />
-                      <Route path="/skills/new" element={<NewSkill />} />
-                      <Route path="/skills/:id/edit" element={<EditSkill />} />
-                      <Route path="/agents" element={<Agent />} />
-                      <Route path="/agents/new" element={<NewAgent />} />
-                      <Route path="/agents/:id/edit" element={<EditAgent />} />
-                      <Route path="/mcps" element={<Mcp />} />
-                      <Route path="/mcps/new" element={<NewMcp />} />
-                      <Route path="/mcps/:id/edit" element={<EditMcp />} />
-                      <Route path="/mcps/:id/test" element={<McpTest />} />
-                      <Route path="/mcps/:id" element={<McpDetail />} />
-                      <Route path="*" element={<Navigate to="/" replace />} />
-                    </Routes>
-                  </Layout>
-                </BrowserRouter>
+                <RouterProvider router={router} />
               </CrewProvider>
             </KnowledgeProvider>
           </SkillProvider>
