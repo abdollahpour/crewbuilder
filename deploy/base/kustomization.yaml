@@ -1,0 +1,27 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+labels:
+  - pairs:
+      app.kubernetes.io/part-of: crewbuilder
+    includeSelectors: false
+    includeTemplates: true
+
+resources:
+  - agent
+  - builder
+  - crew
+  - dashboard
+  - ingress
+  - knowledge
+  - mcp
+  - skill
+
+configMapGenerator:
+  - name: app-config
+    literals:
+      - AGENT_SERVICE_URL=http://agent:8080
+      - SKILL_SERVICE_URL=http://skill:8080
+      - CREW_SERVICE_URL=http://crew:8080
+      - MCP_SERVICE_URL=http://mcp:8080
+      - KNOWLEDGE_SERVICE_URL=http://knowledge:8080

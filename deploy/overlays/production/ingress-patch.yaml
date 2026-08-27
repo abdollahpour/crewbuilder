@@ -1,0 +1,9 @@
+- op: replace
+  path: /spec/rules/0/host
+  value: crewbuilder.example.com
+- op: add
+  path: /spec/tls
+  value:
+    - hosts:
+        - crewbuilder.example.com
+      secretName: crewbuilder-tls

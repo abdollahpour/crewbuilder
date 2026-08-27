@@ -1,0 +1,66 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: crewbuilder
+  labels:
+    app.kubernetes.io/name: crewbuilder
+    app.kubernetes.io/component: ingress
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "300"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: crewbuilder.example.com
+      http:
+        paths:
+          - path: /api/v1/skills
+            pathType: Prefix
+            backend:
+              service:
+                name: skill
+                port:
+                  number: 8080
+          - path: /api/v1/agents
+            pathType: Prefix
+            backend:
+              service:
+                name: agent
+                port:
+                  number: 8080
+          - path: /api/v1/mcps
+            pathType: Prefix
+            backend:
+              service:
+                name: mcp
+                port:
+                  number: 8080
+          - path: /api/v1/knowledge
+            pathType: Prefix
+            backend:
+              service:
+                name: knowledge
+                port:
+                  number: 8080
+          - path: /api/v1/crews
+            pathType: Prefix
+            backend:
+              service:
+                name: crew
+                port:
+                  number: 8080
+          - path: /api/v1/builders
+            pathType: Prefix
+            backend:
+              service:
+                name: builder
+                port:
+                  number: 8080
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: dashboard
+                port:
+                  number: 8080

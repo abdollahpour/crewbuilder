@@ -1,0 +1,41 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: crewbuilder-dev
+
+labels:
+  - pairs:
+      app.kubernetes.io/environment: dev
+    includeSelectors: false
+    includeTemplates: true
+
+resources:
+  - namespace.yaml
+  - ../../base
+
+secretGenerator:
+  - name: database
+    envs:
+      - database.env
+
+patches:
+  - target:
+      kind: Ingress
+      name: crewbuilder
+    path: ingress-patch.yaml
+
+images:
+  - name: ghcr.io/abdollahpour/crewbuilder/agent
+    newTag: latest
+  - name: ghcr.io/abdollahpour/crewbuilder/builder
+    newTag: latest
+  - name: ghcr.io/abdollahpour/crewbuilder/crew
+    newTag: latest
+  - name: ghcr.io/abdollahpour/crewbuilder/dashboard
+    newTag: latest
+  - name: ghcr.io/abdollahpour/crewbuilder/knowledge
+    newTag: latest
+  - name: ghcr.io/abdollahpour/crewbuilder/mcp
+    newTag: latest
+  - name: ghcr.io/abdollahpour/crewbuilder/skill
+    newTag: latest

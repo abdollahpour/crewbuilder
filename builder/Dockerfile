@@ -18,8 +18,8 @@ ENV PATH="/app/.venv/bin:$PATH" \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     FASTEMBED_CACHE_PATH=/app/.cache/fastembed
-RUN groupadd --system app && useradd --system --gid app app
+RUN groupadd --system --gid 999 app && useradd --system --uid 999 --gid app --no-log-init app
 COPY --from=builder --chown=app:app /app /app
-USER app
+USER 999
 EXPOSE 8080
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8080"]

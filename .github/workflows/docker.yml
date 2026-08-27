@@ -54,3 +54,20 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha,scope=${{ matrix.service }}
           cache-to: type=gha,mode=max,scope=${{ matrix.service }}
+
+      # GHCR packages default to private even when the git repo is public.
+      # Kubernetes nodes pull anonymously, so the package must be public.
+      - name: Set GHCR package visibility to public
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          pkg="${{ github.event.repository.name }}%2F${{ matrix.service }}"
+          if [ "${{ github.event.repository.owner.type }}" = "Organization" ]; then
+            endpoint="/orgs/${{ github.repository_owner }}/packages/container/${pkg}/visibility"
+          else
+            endpoint="/users/${{ github.repository_owner }}/packages/container/${pkg}/visibility"
+          fi
+          gh api --method PUT "$endpoint" -f visibility=public \
+            && echo "Package is public" \
+            || echo "::warning::Could not set GHCR visibility. Set it in GitHub: Packages → ${{ matrix.service }} → Package settings → Change visibility → Public"
