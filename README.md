@@ -37,16 +37,17 @@ ollama run qwen3:8b
 
 The code shipped by some sample data-set.
 
+1. [Install CrewAI](https://docs.crewai.com/v1.15.17/en/installation)
 1. Create **agents** (who does what).
-2. Optionally add **skills**, **knowledge**, or **MCPs** (extra tools / docs).
-3. Create a **crew** and add your agents.
-4. Click **Build** → download the zip.
-5. Unzip it
-6. (Optional if you used cloud provider, default is ollama) copy `.env.example` to `.env`, put in your API keys.
-7. Run:
+1. Optionally add **skills**, **knowledge**, or **MCPs** (extra tools / docs).
+1. Create a **crew** and add your agents.
+1. Click **Build** → download the zip.
+1. Unzip it
+1. (Optional if you used cloud provider, default is ollama) copy `.env.example` to `.env`, put in your API keys.
+1. Run:
 
 ```bash
-uv run main.py
+crewai run
 ```
 
 Try to feed some samples. Ex:  
